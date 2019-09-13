@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<view
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    class="com.redocs.archive.ui.view.tabs.TabBarView$Header"
+    android:id="@+id/tab_header"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:tabTextColor="@android:color/white"
+    style="@style/Platform.MaterialComponents"
+    android:background="@color/colorPrimary"
+    app:tabIndicatorColor="@android:color/white"/>
