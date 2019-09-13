@@ -2,6 +2,7 @@ package com.redocs.archive.ui
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,8 +19,13 @@ import com.redocs.archive.ui.view.partitions.PartitionsStructureTreeView
 
 class StructureFragment() : Fragment(),  ContextActionBridge {
 
-    override lateinit var contextActionModeController: ContextActionModeController
+    override var contextActionModeController: ContextActionModeController = ContextActionModeControllerStub()
+        set(value){
+            tree?.contextActionModeController = value
+            field = value
+        }
 
+    private var tree: PartitionsStructureTreeView? = null
     private var repo: PartitionsStructureRepository? = null
     private val vm by activityViewModels<PartitionStructureViewModel>()
 
@@ -35,7 +41,7 @@ class StructureFragment() : Fragment(),  ContextActionBridge {
 
         val repo = repo ?: vm.repository as PartitionsStructureRepository
         vm.repository=repo
-        val stv = PartitionsStructureTreeView(context as Context, vm, repo).apply {
+        tree = PartitionsStructureTreeView(context as Context, vm, repo).apply {
                 contextActionModeController = this@StructureFragment.contextActionModeController
                 addSelectionListener {
                     itemSelected(it)
@@ -54,7 +60,7 @@ class StructureFragment() : Fragment(),  ContextActionBridge {
                     ViewGroup.LayoutParams.MATCH_PARENT)
             }.apply {
                 setPadding(8)
-                addView(stv)
+                addView(tree)
             }
     }
 

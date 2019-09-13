@@ -16,3 +16,9 @@ interface ContextActionSource {
     fun onDestroyContextAction()
     fun onContextMenuItemClick(mode: ActionMode, item: MenuItem?): Boolean
 }
+
+class ContextActionModeControllerStub : ContextActionModeController {
+    override fun startActionMode(source: ContextActionSource) {
+
+    }
+}

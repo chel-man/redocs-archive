@@ -25,11 +25,16 @@ import com.redocs.archive.ui.view.list.ListRow
 
 class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
 
-    override lateinit var contextActionModeController: ContextActionModeController
+    override var contextActionModeController: ContextActionModeController = ContextActionModeControllerStub()
+        set(value){
+            listView?.contextActionModeController = value
+            field = value
+        }
+
     override var isActive = false
     //override var actionListener: (Boolean) -> Unit = {}
 
-    private lateinit var listView: DocumentListView
+    private var listView: DocumentListView? = null
     private var repo: Repository? = null
     private val vm by activityViewModels<DocumentsViewModel>()
 
@@ -43,7 +48,8 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
         savedInstanceState: Bundle?
     ): View? {
 
-        listView = DocumentListView(context as Context, vm, contextActionModeController).apply {
+        listView = DocumentListView(context as Context, vm).apply {
+            contextActionModeController = this@DocumentsFragment.contextActionModeController
             setAdapter(ListAdapter(context))
             setDataSource(DocumentListDataSource(context))
             Handler().post {
@@ -121,15 +127,16 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
 
 private class DocumentListView(
     context: Context,
-    vm: DocumentsViewModel,
-    contextActionModeController: ContextActionModeController
+    vm: DocumentsViewModel
 ) : ListView<ListRow>(context, vm), ContextActionSource {
+
+    var contextActionModeController: ContextActionModeController? = null
 
     override val lockContent = false
 
     init {
         longClickListener = {
-            contextActionModeController.startActionMode(this)
+            contextActionModeController?.startActionMode(this)
             true
         }
     }

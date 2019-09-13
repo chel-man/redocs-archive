@@ -17,6 +17,7 @@
 package com.redocs.archive.ui
 
 import android.os.Bundle
+import android.util.Log
 import android.view.*
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -44,7 +45,6 @@ class HomeFragment : Fragment(), ActivablePanel {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         tabs=tabBar {
                 tab {
                     title { R.string.structure_tab_title }

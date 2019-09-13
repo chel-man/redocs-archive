@@ -2,6 +2,7 @@ package com.redocs.archive.ui.view.tabs
 
 import android.content.Context
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -82,6 +83,7 @@ class TabBarView(
 
         override fun getItem(position: Int): Fragment {
             var f = createFragment(position)
+            Log.d("#PageAdapter","created $position")
             return f
         }
 
@@ -104,6 +106,7 @@ class TabBarView(
 
         override fun instantiateItem(container: ViewGroup, position: Int): Any {
             var f= super.instantiateItem(container, position) as Fragment
+            Log.d("#PageAdapter","instantiated $position $f")
             setupFragment(position, f)
             return f
         }
@@ -142,7 +145,7 @@ class TabBarView(
 
         val createFragment = {
             fragment = createFragment()
-            //Log.d("#TAB","FRAGMENT CREATED $title")
+            //Log.d("#TAB","CREATED $title")
             fragment
         }
 
@@ -151,6 +154,7 @@ class TabBarView(
                 fragment.actionListener = action
             }*/
             setupFragment(fragment)
+            Log.d("#TAB","SETUP $fragment")
             if(ac !=null)
                 (fragment as ContextActionBridge).contextActionModeController = ac
             //Log.d("#TAB","FRAGMENT CONFIGURED $title")

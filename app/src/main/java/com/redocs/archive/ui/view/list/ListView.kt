@@ -304,7 +304,7 @@ open class ListView<T: ListRow>(
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = getItem(position) as T
 
-            Log.d("#View","${item.id}  /  $position  ${if(item.id != position) "!!!" else ""}")
+            //Log.d("#View","${item.id}  /  $position  ${if(item.id != position) "!!!" else ""}")
             //if(item !=null) {
             (holder.itemView as ListRowView).apply {
                 var i = 0
@@ -321,8 +321,8 @@ open class ListView<T: ListRow>(
                 }
                 else {
                     isActivated = selectedPositions.contains(position)
-                    if(isActivated)
-                        Log.d("#VIEW","Selected $position")
+                    /*if(isActivated)
+                        Log.d("#VIEW","Selected $position")*/
                 }
 
                 val view = this
