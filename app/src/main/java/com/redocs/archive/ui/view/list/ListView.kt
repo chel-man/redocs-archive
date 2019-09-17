@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Handler
-import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
@@ -37,19 +36,32 @@ open class ListView<T: ListRow>(
     private val vm: ListViewModel
 ) : RecyclerView(context){
 
-    val selectedItems: List<T>
-        get() = (adapter as ListAdapter<T>).selectedItems
+    val selectedIds: List<Long>
+        get() = (adapter as ListAdapter<T>).selectedIds
 
     var selectionMode: SelectionMode = SelectionMode.Single
         set(value) {
             vm.selectionMode = value
-            (adapter as ListAdapter<T>).selectionMode = value }
+            (adapter as ListAdapter<T>).selectionMode = value
+            field = value}
 
-    var contextAction: Boolean = false
+    var isContextAction: Boolean = false
         set(value) { (adapter as ListAdapter<T>).isContextAction = value }
 
     var longClickListener: ((item: T)->Boolean)? = null
-    var selectionListener: ((item: T?)->Unit)? = null
+    var selectionListener: ((item: T?, selected: Boolean)->Unit)? = null
+
+    var dataSource: ListDataSource<T>? = null
+        set(value){
+            if(value != null) {
+                value.scope = scope
+                this.ds = value
+            }
+            field = value
+        }
+
+    var listAdapter: ListAdapter<T> = DefaultListAdapter(context) as ListAdapter<T>
+        set(value) = setListAdapterInternal(value)
 
     private var controller: ListController<T>
     private lateinit var ds: ListDataSource<T>
@@ -62,7 +74,7 @@ open class ListView<T: ListRow>(
 
     init {
         layoutManager = LinearLayoutManager(context)
-        setListAdapter(DefaultListAdapter(context) as ListAdapter<T>)
+        listAdapter = DefaultListAdapter(context) as ListAdapter<T>
 
         scope = vm.coroScope
         controller = vm.controller as ListController<T>? ?: createController(scope)
@@ -93,15 +105,11 @@ open class ListView<T: ListRow>(
         return EmptyListController(scope) as ListController<T>
     }
 
-    fun setDataSource(ds: ListDataSource<T>){
-        ds.scope = scope
-        this.ds = ds
-    }
-
     private fun createList(ds: PositionalDataSource<T>): PagedList<T> {
         val pageSize = screenRows*2
-        val prefetch = screenRows
+        val prefetch = 5//screenRows/4
         val maxSize = 2*prefetch+pageSize
+
         return PagedList(
             ds,
             PagedList.Config.Builder()
@@ -131,15 +139,17 @@ open class ListView<T: ListRow>(
     fun refresh(){
 
         with(adapter as ListAdapter<T>) {
-            selectedPosition = vm.selectedRowPosition
+            selectedId = vm.selectedId
+            selectedIds.clear()
+            selectedIds += vm.selectedIds
             selectionMode = vm.selectionMode
         }
 
+        val pos = vm.firstRowPosition
         startObserveData(createList(ds))
-
         Handler().post{
-            if(vm.firstRowPosition > -1)
-                scrollToPosition(vm.firstRowPosition)
+            if(pos > -1)
+                scrollToPosition(pos)
         }
 
     }
@@ -160,21 +170,21 @@ open class ListView<T: ListRow>(
             return false
     }
 
-    private fun onItemSelected(item: T?){
-        vm.selectedRowPosition = (adapter as ListAdapter<T>).selectedPosition
-        val l = selectionListener
-        if(l != null)
-            l(item)
+    private fun onItemSelected(item: T?, selected: Boolean){
+        if(item != null) {
+            if(selected)
+                vm.selectedIds += item.id
+            else
+                vm.selectedIds -= item.id
+
+            selectionListener?.invoke(item, selected)
+        }
     }
 
-    fun setAdapter(adapter: ListAdapter<T>) {
-        setListAdapter(adapter)
-    }
-
-    private fun setListAdapter(adapter: ListAdapter<T>) {
+    private fun setListAdapterInternal(adapter: ListAdapter<T>) {
         this.adapter = adapter
         with(adapter) {
-            selectedPosition = vm.selectedRowPosition
+            selectedIds += vm.selectedIds
             selectionListener = this@ListView::onItemSelected
             longClickListener = this@ListView::onLongClick
         }
@@ -192,15 +202,19 @@ open class ListView<T: ListRow>(
     }*/
 
     class ListRowBase(
-        override val id: Int,
-        override val name: String) : ListRow {
+        override val id: Long,
+        override val name: String
+    ) : ListRow {
 
         override fun toString(): String {
             return "$id : $name"
         }
     }
 
-    private class DefaultListAdapter(context: Context) : ListAdapter<ListRow>(context) {
+    private class DefaultListAdapter(
+        context: Context
+    ) : ListAdapter<ListRow>(context) {
+
         override val columnCount = 0
         override val columnNames: Array<String> = emptyArray()
 
@@ -223,10 +237,10 @@ open class ListView<T: ListRow>(
     ) {
 
 
-        var selectionListener: ((item: T?) -> Unit)? = null
+        var selectionListener: ((item: T?, selected: Boolean) -> Unit)? = null
         var longClickListener: ((item: T) -> Boolean)? = null
         var controlClickListener: ((item: T, button: View) -> Unit)? = null
-        var selectedPosition = -1
+        var selectedId: Long = -1
         var textSize = 18.0F
         var selectionMode: SelectionMode = SelectionMode.Single
             set(value){
@@ -234,40 +248,29 @@ open class ListView<T: ListRow>(
                 field = value
             }
 
-        val selectedItems: List<T>
-            get() {
-                Log.d("#ADAPTER","selected: ${selectedPositions.joinToString (",")}")
-                val items = mutableListOf<T>()
-                for (pos in selectedPositions)
-                    items += getItem(pos) as T
-                if(selectedPosition >-1 && !selectedPositions.contains(selectedPosition))
-                    items += getItem(selectedPosition) as T
-
-                return items
-            }
-
         var isContextAction: Boolean = false
             set(value) {
                 isShowCheckBoxes = value || selectionMode == SelectionMode.Multiply
                 if(!value) {
-                    selectedPositions.clear()
-                    if(selectedPosition > -1)
+                    selectedIds.clear()
+                    if(selectedId > -1)
                         prevSelected?.isActivated = true
                 }
                 field = value
             }
 
+        val selectedIds = mutableListOf<Long>()
+
         protected abstract val columnCount: Int
         protected abstract val columnNames: Array<String>
         protected abstract fun getValueAt(item: T, column: Int): String
 
-        private val selectedPositions = mutableSetOf<Int>()
         private val createdViews = mutableSetOf<ListRowView>()
         private var prevSelected: ListRowView? = null
         private var isShowCheckBoxes: Boolean = false
             set(value){
                 if(value != field) {
-                    Log.d("#AD","Showing checkboxes: $value cnt:${createdViews.size}")
+                    //Log.d("#AD","Showing checkboxes: $value cnt:${createdViews.size}")
                     for (v in createdViews) {
                         with(v.checkBox) {
                             visibility = if (value) View.VISIBLE else View.GONE
@@ -279,7 +282,7 @@ open class ListView<T: ListRow>(
                                 cv.visibility = if (!value) View.VISIBLE else View.GONE
                         }
                     }
-                    Log.d("#AD","Showing checkboxes: END")
+                    //Log.d("#AD","Showing checkboxes: END")
                     field = value
                 }
             }
@@ -303,16 +306,15 @@ open class ListView<T: ListRow>(
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = getItem(position) as T
+            val itemId = item.id
 
-            //Log.d("#View","${item.id}  /  $position  ${if(item.id != position) "!!!" else ""}")
-            //if(item !=null) {
             (holder.itemView as ListRowView).apply {
                 var i = 0
                 for(tv in columnViews)
                     tv?.text = getValueAt(item,i++)
 
                 if(selectionMode == SelectionMode.Single && !isContextAction){
-                    if (selectedPosition == position) {
+                    if (selectedId == itemId) {
                         isActivated = true
                         prevSelected = this
                     }
@@ -320,7 +322,8 @@ open class ListView<T: ListRow>(
                         isActivated = false
                 }
                 else {
-                    isActivated = selectedPositions.contains(position)
+                    //isActivated = selectedPositions.contains(position)
+                    isActivated = selectedIds.contains(item.id)
                     /*if(isActivated)
                         Log.d("#VIEW","Selected $position")*/
                 }
@@ -330,31 +333,32 @@ open class ListView<T: ListRow>(
                 with(checkBox){
                     visibility = if(isShowCheckBoxes) View.VISIBLE else GONE
                     setOnCheckedChangeListener {buttonView, isChecked ->  }
-                    isChecked = selectedPositions.contains(position)
+                    isChecked = selectedIds.contains(item.id)
+                        //selectedPositions.contains(position)
                     setOnCheckedChangeListener { buttonView, isChecked ->
                         if(isChecked) {
-                            selectedPositions += position
-                            Log.d("#VIEW","SELECTED ${selectedPositions.joinToString ("\n")}")
+                            selectedIds += itemId
+                            //Log.d("#VIEW","SELECTED ${selectedPositions.joinToString ("\n")}")
                         }
                         else {
-                            selectedPositions -= position
-                            Log.d("#VIEW", "UNSELECTED ${selectedPositions.joinToString("\n")}")
+                            selectedIds -= itemId
+                            //Log.d("#VIEW", "UNSELECTED ${selectedPositions.joinToString("\n")}")
                         }
-                        view.isActivated = isChecked
+                        selectItem(item,view,isChecked)
                     }
                 }
 
                 setClickListener {
                     if(!isContextAction)
-                        selectItem(item, this, position)
+                        selectItem(item, this, true)
                 }
 
                 setLongClickListener {
                     if (isContextAction)
                         false
                     else{
-                        //if (selectedPosition != position)
-                            selectItem(item, this, position)
+                        //if (selectedId != position)
+                            selectItem(item, this, true)
                         val l = longClickListener
                         if (l != null)
                             l(item)
@@ -374,17 +378,17 @@ open class ListView<T: ListRow>(
             //}
         }
 
-        private fun selectItem(item: T, itemView: ListRowView, pos: Int) {
+        private fun selectItem(item: T, itemView: ListRowView, selected: Boolean) {
 
             if (selectionMode == SelectionMode.Single && !isContextAction){
                 prevSelected?.isActivated = false
                 prevSelected?.checkBox?.isChecked = false
-                selectedPosition = pos
+                selectedId = item.id
                 prevSelected = itemView
             }
-            itemView.isActivated = true
-            itemView.checkBox.isChecked = true
-            selectionListener?.invoke(if (pos > -1) item else null)
+            itemView.isActivated = selected
+            itemView.checkBox.isChecked = selected
+            selectionListener?.invoke(item, selected)
         }
 
 
@@ -639,16 +643,16 @@ open class ListViewModel : ViewModel() {
     val coroScope
         get() =  viewModelScope
 
+    var selectedId: Long = -1
     var controller: ListControllerInterface? = null
     var firstRowPosition = -1
-    var selectedRowPosition = -1
-    //val data: MutableLiveData<ListDataModel>
+    val selectedIds = mutableSetOf<Long>()
 }
 
 //interface ListDataModel
 interface ListControllerInterface
 interface ListRow {
-    val id: Int
+    val id: Long
     val name: String
 }
 

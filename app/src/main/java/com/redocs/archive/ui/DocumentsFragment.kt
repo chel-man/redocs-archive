@@ -50,8 +50,9 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
 
         listView = DocumentListView(context as Context, vm).apply {
             contextActionModeController = this@DocumentsFragment.contextActionModeController
-            setAdapter(ListAdapter(context))
-            setDataSource(DocumentListDataSource(context))
+            //selectionMode = ListView.SelectionMode.Multiply
+            listAdapter= ListAdapter(context)
+            dataSource = DocumentListDataSource(context)
             Handler().post {
                 refresh()
             }
@@ -139,20 +140,21 @@ private class DocumentListView(
             contextActionModeController?.startActionMode(this)
             true
         }
+
     }
 
     override fun createContextActionMenu(inflater: MenuInflater, menu: Menu) {
         inflater.inflate(R.menu.documents_context_menu,menu)
-        contextAction = true
+        isContextAction = true
     }
 
     override fun onDestroyContextAction() {
-        contextAction = false
+        isContextAction = false
     }
 
     override fun onContextMenuItemClick(mode: ActionMode, item: MenuItem?): Boolean {
         when(item?.itemId){
-            R.id.ps_context_add -> Log.d("#DLIST","${selectedItems.joinToString("\n")}")
+            R.id.ps_context_add -> Log.d("#DLIST","${selectedIds.joinToString(",")}")
         }
         mode.finish()
         return true
@@ -166,7 +168,7 @@ private class DocumentListDataSource(private val context: Context) : ListView.Li
 
     init {
         val l = mutableListOf<ListRow>()
-        for(i in 1..200)
+        for(i in 1..200L)
             l.add(ListView.ListRowBase(i-1, "Item Item Item Item Item Item Item Item Item Item Item Item Item ${i-1}"))
         data = l
     }

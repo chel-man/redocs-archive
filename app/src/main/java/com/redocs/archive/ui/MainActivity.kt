@@ -104,17 +104,19 @@ class MainActivity : AppCompatActivity(), ContextActionModeController {
         return navController.navigateUp(appBarConfiguration)
     }
 
-    private fun setNavMenuLocked(locked: Boolean) {
+    private var isNavMenuLocked: Boolean = false
+    set(value){
         drawerLayout.setDrawerLockMode(
-            if(locked)
+            if(value)
                 DrawerLayout.LOCK_MODE_LOCKED_CLOSED
             else
                 DrawerLayout.LOCK_MODE_UNLOCKED)
+        field = value
     }
 
     override fun startActionMode(source: ContextActionSource) {
 
-        setNavMenuLocked(true)
+        isNavMenuLocked = true
 
         startSupportActionMode(
             object : ActionMode.Callback {
@@ -134,7 +136,7 @@ class MainActivity : AppCompatActivity(), ContextActionModeController {
                 override fun onPrepareActionMode(mode: ActionMode, menu: Menu?): Boolean = false
 
                 override fun onDestroyActionMode(mode: ActionMode) {
-                    setNavMenuLocked(false)
+                    isNavMenuLocked = false
                     source.onDestroyContextAction()
                 }
             })

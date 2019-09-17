@@ -2,7 +2,6 @@ package com.redocs.archive.ui.view.tabs
 
 import android.content.Context
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -30,7 +29,7 @@ class TabBarView(
     private val pl = object:SimpleOnPageChangeListener(){
         override fun onPageSelected(position: Int) {
             val tab = (adapter as Adapter).getTab(position)
-            //Log.d("#TABS","selecting $position [${tab.title}] selected: $selected  tab: $tab")
+            ////Log.d("#TABS","selecting $position [${tab.title}] selected: $selected  tab: $tab")
             //selectionListener?.invoke(selected,tab)
             selected = tab
         }
@@ -39,12 +38,12 @@ class TabBarView(
     init {
         tag="${this}"
         this.id= getNextId(parent)
-        ////Log.d("TabBarView","CREATED $id tag: $tag")
+        //////Log.d("TabBarView","CREATED $id tag: $tag")
         tabsHeader = parent.layoutInflater.inflate(R.layout.tab_bar_header,this,false) as Header
         adapter = Adapter(context as Context, parent.childFragmentManager,tabs)//titles)
         tabsHeader.setupWithViewPager(this)
         this.addView(tabsHeader)
-        ////Log.d("TabBarView","CREATED WITH ARGS")
+        //////Log.d("TabBarView","CREATED WITH ARGS")
         addOnPageChangeListener(pl)
     }
 
@@ -83,7 +82,7 @@ class TabBarView(
 
         override fun getItem(position: Int): Fragment {
             var f = createFragment(position)
-            Log.d("#PageAdapter","created $position")
+            //Log.d("#PageAdapter","created $position")
             return f
         }
 
@@ -106,7 +105,7 @@ class TabBarView(
 
         override fun instantiateItem(container: ViewGroup, position: Int): Any {
             var f= super.instantiateItem(container, position) as Fragment
-            Log.d("#PageAdapter","instantiated $position $f")
+            //Log.d("#PageAdapter","instantiated $position $f")
             setupFragment(position, f)
             return f
         }
@@ -140,12 +139,12 @@ class TabBarView(
         lateinit var fragment: Fragment
 
         init{
-            //Log.d("#TAB","CREATED $title")
+            ////Log.d("#TAB","CREATED $title")
         }
 
         val createFragment = {
             fragment = createFragment()
-            //Log.d("#TAB","CREATED $title")
+            ////Log.d("#TAB","CREATED $title")
             fragment
         }
 
@@ -154,10 +153,10 @@ class TabBarView(
                 fragment.actionListener = action
             }*/
             setupFragment(fragment)
-            Log.d("#TAB","SETUP $fragment")
+            //Log.d("#TAB","SETUP $fragment")
             if(ac !=null)
                 (fragment as ContextActionBridge).contextActionModeController = ac
-            //Log.d("#TAB","FRAGMENT CONFIGURED $title")
+            ////Log.d("#TAB","FRAGMENT CONFIGURED $title")
             this.fragment = fragment
         }
     }
@@ -194,7 +193,7 @@ class TabBarViewBuilder(private val parent: Fragment) {
         }
 
         fun build(): TabBarView.Tab {
-            ////Log.d("#TabBuilder","TAB $title CREATED")
+            //////Log.d("#TabBuilder","TAB $title CREATED")
             return TabBarView.Tab(
                 title as Int,
                 fragmentBuilder.create,
