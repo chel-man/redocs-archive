@@ -10,6 +10,7 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.view.ActionMode
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.os.postDelayed
 import androidx.core.view.ViewCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -22,6 +23,7 @@ import com.redocs.archive.ui.utils.showError
 import com.redocs.archive.ui.view.ActivablePanel
 import com.redocs.archive.ui.view.list.ListView
 import com.redocs.archive.ui.view.list.ListRow
+import kotlinx.coroutines.delay
 
 class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
 
@@ -51,11 +53,6 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
         listView = DocumentListView(context as Context, vm).apply {
             contextActionModeController = this@DocumentsFragment.contextActionModeController
             //selectionMode = ListView.SelectionMode.Multiply
-            listAdapter= ListAdapter(context)
-            dataSource = DocumentListDataSource(context)
-            Handler().post {
-                refresh()
-            }
         }
         return listView
     }
@@ -74,6 +71,66 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
 
     }
 
+}
+
+private class DocumentListView(
+    context: Context,
+    vm: DocumentsViewModel
+) : ListView<ListRow>(context, vm,ListAdapter(context)), ContextActionSource {
+
+    var contextActionModeController: ContextActionModeController? = null
+
+    override val lockContent = false
+
+    init {
+        longClickListener = {
+            contextActionModeController?.startActionMode(this)
+            true
+        }
+        dataSource = DocumentListDataSource(context)
+        Handler().postDelayed(10000) {
+            selectedId= 135
+        }
+
+    }
+
+    fun refresh(data: Collection<ListRow>) {
+
+        val ds = DocumentListDataSource(context)
+        with(ds){
+            clear()
+            parentId = Long.MIN_VALUE
+            this.data += data
+        }
+        dataSource = ds
+        refresh()
+    }
+
+    fun refresh(id: Long){
+        with(dataSource as DocumentListDataSource){
+            clear()
+            this.parentId = id
+        }
+        refresh()
+    }
+
+    override fun createContextActionMenu(inflater: MenuInflater, menu: Menu) {
+        inflater.inflate(R.menu.documents_context_menu,menu)
+        isContextAction = true
+    }
+
+    override fun onDestroyContextAction() {
+        isContextAction = false
+    }
+
+    override fun onContextMenuItemClick(mode: ActionMode, item: MenuItem?): Boolean {
+        when(item?.itemId){
+            R.id.ps_context_add -> Log.d("#DLIST","${selectedIds.joinToString(",")}")
+        }
+        mode.finish()
+        return true
+    }
+
     private class ListAdapter(context: Context) : ListView.ListAdapter<ListRow>(context) {
 
         override val columnCount = 2
@@ -83,6 +140,7 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
             controlClickListener = { item, src ->
                 Log.d("#DLA", "Control clicked: ${item.id}")
             }
+
         }
 
         override fun getValueAt(item: ListRow, column: Int): String {
@@ -126,51 +184,31 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
     }
 }
 
-private class DocumentListView(
-    context: Context,
-    vm: DocumentsViewModel
-) : ListView<ListRow>(context, vm), ContextActionSource {
-
-    var contextActionModeController: ContextActionModeController? = null
-
-    override val lockContent = false
-
-    init {
-        longClickListener = {
-            contextActionModeController?.startActionMode(this)
-            true
-        }
-
-    }
-
-    override fun createContextActionMenu(inflater: MenuInflater, menu: Menu) {
-        inflater.inflate(R.menu.documents_context_menu,menu)
-        isContextAction = true
-    }
-
-    override fun onDestroyContextAction() {
-        isContextAction = false
-    }
-
-    override fun onContextMenuItemClick(mode: ActionMode, item: MenuItem?): Boolean {
-        when(item?.itemId){
-            R.id.ps_context_add -> Log.d("#DLIST","${selectedIds.joinToString(",")}")
-        }
-        mode.finish()
-        return true
-    }
-
-}
-
 private class DocumentListDataSource(private val context: Context) : ListView.ListDataSource<ListRow>() {
 
-    private lateinit var data:  List<ListRow>
+    var data:  List<ListRow> = mutableListOf()
+    var parentId: Long = Long.MIN_VALUE
+        set(value){
+            genParentData()
+        }
 
     init {
-        val l = mutableListOf<ListRow>()
+
         for(i in 1..200L)
-            l.add(ListView.ListRowBase(i-1, "Item Item Item Item Item Item Item Item Item Item Item Item Item ${i-1}"))
-        data = l
+            data += ListView.ListRowBase(i-1,
+                if( (i % 2L) == 0L)
+                    "Item Item Item Item Item Item Item Item Item Item Item Item Item ${i-1}"
+                else
+                    "Item ${i-1}")
+    }
+
+    fun clear(){
+        (data as MutableList<ListRow>).clear()
+    }
+
+    private fun genParentData() {
+        for(i in 1..200L)
+            data += ListView.ListRowBase(i-1, "Child ${i-1}")
     }
 
     override fun onError(exception: Exception) {
@@ -184,8 +222,8 @@ private class DocumentListDataSource(private val context: Context) : ListView.Li
             return listOf()
         if(end>data.size-1)
             end = data.size
-        //Log.d("#ListRepo","RESP: $start : $end")
-        //delay(2000)
+        Log.d("#ListRepo","RESP: $start : $end")
+        delay(500)
         return data.subList(start,end)
     }
 }

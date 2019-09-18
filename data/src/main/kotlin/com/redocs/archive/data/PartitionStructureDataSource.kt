@@ -3,10 +3,10 @@ package com.redocs.archive.data
 import com.redocs.archive.domain.TreeNode
 
 interface PartitionStructureDataSource<T: TreeNode> {
-    suspend fun getChildren(id: Int): List<T>
-    suspend fun get(id: Int): T
-    suspend fun add(parentId: Int, name: String, after: Int = Int.MIN_VALUE): T
-    suspend fun getPath(id: Int): List<Int> {
+    suspend fun getChildren(id: Long): List<T>
+    suspend fun get(id: Long): T
+    suspend fun add(parentId: Long, name: String, after: Long = Long.MIN_VALUE): T
+    suspend fun getPath(id: Long): List<Long> {
         return listOf()
     }
 }

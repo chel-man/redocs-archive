@@ -2,7 +2,7 @@ package com.redocs.archive.domain
 
 interface TreeDataRepositoryInterface<T : TreeNode> {
 
-    suspend fun getChildren(id: Int): List<T>
-    suspend fun get(id: Int): T
-    suspend fun getPath(id: Int): List<Int>
+    suspend fun getChildren(id: Long): List<T>
+    suspend fun get(id: Long): T
+    suspend fun getPath(id: Long): List<Long>
 }

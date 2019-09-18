@@ -21,13 +21,13 @@ class InMemoryPartitionsStructureDataSource: PartitionsStructureDataSource {
         }
     }
 
-    override suspend fun get(id: Int): PartitionStructureNode =
+    override suspend fun get(id: Long): PartitionStructureNode =
         withContext(Dispatchers.Default) {
             delay(1000)
             getNodeById(nodes,id)!!.node
         }
 
-    override suspend fun getChildren(id: Int): List<PartitionStructureNode> =
+    override suspend fun getChildren(id: Long): List<PartitionStructureNode> =
 
         withContext(Dispatchers.Default) {
             delay(1000)
@@ -39,7 +39,7 @@ class InMemoryPartitionsStructureDataSource: PartitionsStructureDataSource {
             l
         }
 
-    override suspend fun add(parentId: Int, name: String, after: Int): PartitionStructureNode {
+    override suspend fun add(parentId: Long, name: String, after: Long): PartitionStructureNode {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
@@ -47,7 +47,7 @@ class InMemoryPartitionsStructureDataSource: PartitionsStructureDataSource {
 
 data class Node(val node:PartitionStructureNode, val children: List<Node>)
 
-private fun getNodeById(nodes: List<Node>, id: Int, level: Int=0): Node? {
+private fun getNodeById(nodes: List<Node>, id: Long, level: Int=0): Node? {
     for(n in nodes){
         if(n.node.id==id)
             return n

@@ -74,7 +74,7 @@ abstract class TreeView<T : TreeViewNode>(
         return TreeController(ld,scope)
     }
 
-    fun select(id:Int){
+    fun select(id:Long){
         (adapter as Adapter<T>).select(id)
     }
 
@@ -121,7 +121,7 @@ abstract class TreeView<T : TreeViewNode>(
         TreeViewNodeBase(id,text,false,0,false)*/
 
     protected open class TreeViewNodeBase(
-        override val id: Int,
+        override val id: Long,
         override val text: String,
         override val isLeaf: Boolean,
         override var level: Int,
@@ -283,7 +283,7 @@ abstract class TreeView<T : TreeViewNode>(
             reload()
         }
 
-        fun select(id: Int) {
+        fun select(id: Long) {
             controller.select(id)
         }
 
@@ -423,7 +423,7 @@ abstract class TreeView<T : TreeViewNode>(
 
     private class TreeNodeStub(
         val parent: TreeNodeStub?,
-        id: Int,
+        id: Long,
         text: String,
         val children: MutableList<TreeNodeStub> = mutableListOf<TreeNodeStub>()
     ) : TreeViewNodeBase(id,text,true,0,false)
@@ -459,15 +459,15 @@ abstract class TreeView<T : TreeViewNode>(
         /***************************************
             Methods for override
         ****************************************/
-        protected open suspend fun getNode(id: Int): T {
+        protected open suspend fun getNode(id: Long): T {
             return findInData(listOf(data),id) as T
         }
 
-        protected open suspend fun getChildren(id: Int): List<T> {
+        protected open suspend fun getChildren(id: Long): List<T> {
             return (getNode(id) as TreeNodeStub).children as List<T>
         }
 
-        protected open suspend fun getPath(id: Int): List<Int> {
+        protected open suspend fun getPath(id: Long): List<Long> {
 
             val l = mutableListOf(id)
             var node = getNode(id) as TreeNodeStub
@@ -481,7 +481,7 @@ abstract class TreeView<T : TreeViewNode>(
             Methods for override END
          ****************************************/
 
-        private fun findInData(nodes: List<TreeNodeStub>, id: Int, level: Int=0): TreeNodeStub? {
+        private fun findInData(nodes: List<TreeNodeStub>, id: Long, level: Int=0): TreeNodeStub? {
             for (n in nodes) {
                 if (n.id == id)
                     return n
@@ -635,10 +635,10 @@ abstract class TreeView<T : TreeViewNode>(
                 items.add(position, node)
                 return node
             } else
-                throw NotFoundException(position,"replace")
+                throw NotFoundException(position.toLong(),"replace")
         }
 
-        private fun find(id: Int): Int {
+        private fun find(id: Long): Int {
             var pos = 0
             items.forEach {
                 if(it.id == id)
@@ -648,7 +648,7 @@ abstract class TreeView<T : TreeViewNode>(
             return if(pos == items.size) -1 else pos
         }
 
-        fun select(id: Int) {
+        fun select(id: Long) {
             scope.launch(Dispatchers.Default) {
                 var pos = find(id)
                 if (pos == -1) {
@@ -689,7 +689,7 @@ abstract class TreeView<T : TreeViewNode>(
 
     companion object {
         val LoadingNode = object:TreeViewNode {
-            override val id = 0
+            override val id = 0L
             override val text = "Загрузка ..."
             override val isLeaf = false
             override var level = 0
@@ -749,7 +749,7 @@ open class TreeViewViewModel: ViewModel() {
 interface TreeControllerInterface
 
 interface TreeViewNode {
-    val id: Int
+    val id: Long
     val text: String
     val isLeaf: Boolean
     var level: Int

@@ -10,4 +10,4 @@ data class UpdateOperation(val pos: Int) : Operation()
 data class Error(val ex: Exception) : Operation()
 class Empty : Operation()
 
-class NotFoundException(val data: Int,source: String) : Exception(source)
+class NotFoundException(val data: Long,source: String) : Exception(source)

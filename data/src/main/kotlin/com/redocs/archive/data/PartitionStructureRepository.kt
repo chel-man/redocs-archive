@@ -8,14 +8,14 @@ abstract class PartitionStructureRepository<T: TreeNode>(
     protected var partitionStructureDataSource: PartitionStructureDataSource<T>
 ) : TreeDataRepositoryInterface<T> {
 
-    override suspend fun getChildren(id: Int): List<T> {
+    override suspend fun getChildren(id: Long): List<T> {
         return partitionStructureDataSource.getChildren(id)
     }
-    override suspend fun get(id: Int): T {
+    override suspend fun get(id: Long): T {
         return partitionStructureDataSource.get(id)
     }
 
-    override suspend fun getPath(id: Int): List<Int> {
+    override suspend fun getPath(id: Long): List<Long> {
         return partitionStructureDataSource.getPath(id)
     }
 

@@ -5,7 +5,7 @@ import com.redocs.archive.domain.partitions.PartitionStructureNode
 
 class GetChildrenUseCase (private val repo: PartitionsStructureRepository) {
 
-    suspend operator fun invoke(id: Int): List<PartitionStructureNode> {
+    suspend operator fun invoke(id: Long): List<PartitionStructureNode> {
         return repo.getChildren(id)
     }
 }

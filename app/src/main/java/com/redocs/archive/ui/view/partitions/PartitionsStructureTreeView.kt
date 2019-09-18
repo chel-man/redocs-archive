@@ -35,7 +35,7 @@ class PartitionsStructureTreeView(
     override val lockContent = true
 
     var contextActionModeController: ContextActionModeController? = null
-    var nodeActionListener: ((id: Int, action: Action)->Unit)? = null
+    var nodeActionListener: ((id: Long, action: Action)->Unit)? = null
 
     private val contextMenuIdRes: Int = R.menu.partitions_context_menu
     private var controller: PartitionsStructureTreeView.PartitionStructureTreeController? = null
@@ -87,7 +87,7 @@ class PartitionsStructureTreeView(
     override fun nodeViewBinded(node: TreeViewNode, view: TreeNodeView) {
 
         val c = (view as ViewGroup).getChildAt(view.childCount-1)
-        if(node.id == 0)
+        if(node.id == 0L)
             c.visibility = View.INVISIBLE
         else
             c.visibility = View.VISIBLE
@@ -99,7 +99,7 @@ class PartitionsStructureTreeView(
 
     override suspend fun onEvent(evt: EventBus.Event<*>) {
         when(evt){
-            is SelectPartitionNodeRequestEvent -> { select(evt.data)}
+            is SelectPartitionNodeRequestEvent -> { select(evt.data as Long)}
         }
     }
 
@@ -129,7 +129,7 @@ class PartitionsStructureTreeView(
     }
 
     override fun allowContextActionMode(): Boolean {
-        return selected?.id != -1
+        return selected?.id != -1L
     }
 
     private fun configureContextActionMenu(menu: Menu) {
@@ -145,7 +145,7 @@ class PartitionsStructureTreeView(
         }
     }
 
-    private class PartitionStructureTreeViewNodeImpl(id: Int, text: String, isLeaf: Boolean) :
+    private class PartitionStructureTreeViewNodeImpl(id: Long, text: String, isLeaf: Boolean) :
         PartitionStructureTreeViewNode, TreeView.TreeViewNodeBase(id, text, isLeaf, 0, false)
 
     private class PartitionStructureTreeController (
@@ -163,13 +163,13 @@ class PartitionsStructureTreeView(
                 n.isLeaf
             )
 
-        override suspend fun getNode(id: Int): PartitionStructureTreeViewNode =
+        override suspend fun getNode(id: Long): PartitionStructureTreeViewNode =
                 toTreeVeiwNode(repo.get(id))
 
-        override suspend fun getChildren(id: Int): List<PartitionStructureTreeViewNode> =
+        override suspend fun getChildren(id: Long): List<PartitionStructureTreeViewNode> =
             repo.getChildren(id).map(::toTreeVeiwNode )
 
-        override suspend fun getPath(id: Int): List<Int> =
+        override suspend fun getPath(id: Long): List<Long> =
             repo.getPath(id)
     }
 }

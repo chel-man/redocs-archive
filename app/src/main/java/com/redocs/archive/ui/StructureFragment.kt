@@ -71,5 +71,5 @@ class StructureFragment() : Fragment(),  ContextActionBridge {
     }
 }
 
-private fun openDocumentList(id: Int) {
+private fun openDocumentList(id: Long) {
 }

@@ -4,6 +4,9 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Handler
+import android.os.Parcelable
+import android.text.Layout
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
@@ -25,15 +28,15 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.redocs.archive.R
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.redocs.archive.ui.view.NotFoundException
+import kotlinx.coroutines.*
+import java.lang.IndexOutOfBoundsException
 import java.util.concurrent.Executor
 
 open class ListView<T: ListRow>(
     context: Context,
-    private val vm: ListViewModel
+    private val vm: ListViewModel,
+    adapter: ListAdapter<T>
 ) : RecyclerView(context){
 
     val selectedIds: List<Long>
@@ -51,33 +54,49 @@ open class ListView<T: ListRow>(
     var longClickListener: ((item: T)->Boolean)? = null
     var selectionListener: ((item: T?, selected: Boolean)->Unit)? = null
 
-    var dataSource: ListDataSource<T>? = null
+    var dataSource: ListDataSource<T> = EmptyDataSource as ListDataSource<T>
         set(value){
-            if(value != null) {
-                value.scope = scope
-                this.ds = value
-            }
+            value.scope = vm.coroScope
+            this.ds = value
             field = value
         }
 
-    var listAdapter: ListAdapter<T> = DefaultListAdapter(context) as ListAdapter<T>
-        set(value) = setListAdapterInternal(value)
+    var selectedId: Long
+        set(value) {
+            vm.coroScope.launch {
+                val pos = (adapter as ListAdapter<T>).selectById(value)
+                if(pos > -1)
+                    scrollToPosition(pos)
+                else
+                    throw NotFoundException(value,"Item with id = $id not found")
+            }
+        }
+        @Deprecated("Property can only be written.", level = DeprecationLevel.ERROR)
+        get() = throw NotImplementedError()
+
+    private object EmptyDataSource : ListDataSource<ListRow>() {
+        override fun onError(exception: Exception) {}
+        override suspend fun loadData(startPosition: Int, loadSize: Int): List<ListRow> = emptyList()
+
+    }
 
     private var controller: ListController<T>
     private lateinit var ds: ListDataSource<T>
-    private lateinit var list: PagedList<T>
-    /*var selected: T? = null
-            get() = (adapter as ListAdapter<*>).selected as? T*/
 
     private var screenRows: Int = 0
-    private var scope: CoroutineScope
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        vm.state = layoutManager?.onSaveInstanceState()
+    }
 
     init {
-        layoutManager = LinearLayoutManager(context)
-        listAdapter = DefaultListAdapter(context) as ListAdapter<T>
 
-        scope = vm.coroScope
-        controller = vm.controller as ListController<T>? ?: createController(scope)
+
+        layoutManager = LinearLayoutManager(context)
+        this.adapter = adapter
+
+        controller = vm.controller as ListController<T>? ?: createController(vm.coroScope)
 
         val tvo = this.viewTreeObserver
         if (tvo.isAlive) {
@@ -90,24 +109,20 @@ open class ListView<T: ListRow>(
                             com.redocs.archive.ui.utils.spToPx(
                                 (adapter as ListAdapter<T>).textSize,
                                 context)
+                    initAdapter(adapter,vm)
                 }
             })
         }
-    }
 
-    override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
-        super.onScrollChanged(l, t, oldl, oldt)
-        vm.firstRowPosition = (layoutManager as LinearLayoutManager)
-            .findFirstCompletelyVisibleItemPosition()
     }
 
     protected fun createController(scope: CoroutineScope): ListController<T> {
         return EmptyListController(scope) as ListController<T>
     }
 
-    private fun createList(ds: PositionalDataSource<T>): PagedList<T> {
+    private fun createList(ds: ListDataSource<T>): PagedList<T> {
         val pageSize = screenRows*2
-        val prefetch = 5//screenRows/4
+        val prefetch = screenRows/2
         val maxSize = 2*prefetch+pageSize
 
         return PagedList(
@@ -116,7 +131,7 @@ open class ListView<T: ListRow>(
                 .setEnablePlaceholders(false)
                 .setPageSize(pageSize)
                 .setMaxSize(maxSize)
-                .setInitialLoadSizeHint(screenRows*2)
+                .setInitialLoadSizeHint(screenRows)
                 .setPrefetchDistance(prefetch)
                 .build(),
             Executor {
@@ -127,31 +142,15 @@ open class ListView<T: ListRow>(
             })
     }
 
-    private fun startObserveData(list: PagedList<T>){
-        val ld =MutableLiveData<PagedList<T>>()
-        ld.observe(context as LifecycleOwner, Observer {
-            (adapter as ListAdapter<T>).submitList(it)
-        })
-        ld.value = list
-
+    fun refresh(){
+        clearViewModel(vm)
+        initAdapter(adapter as ListAdapter<T>,vm)
     }
 
-    fun refresh(){
-
-        with(adapter as ListAdapter<T>) {
-            selectedId = vm.selectedId
-            selectedIds.clear()
-            selectedIds += vm.selectedIds
-            selectionMode = vm.selectionMode
-        }
-
-        val pos = vm.firstRowPosition
-        startObserveData(createList(ds))
-        Handler().post{
-            if(pos > -1)
-                scrollToPosition(pos)
-        }
-
+    private fun clearViewModel(vm: ListViewModel){
+        vm.liveList?.value = null
+        vm.selectedIds.clear()
+        vm.state = null
     }
 
     protected abstract class ListController<T : ListRow>(
@@ -172,34 +171,48 @@ open class ListView<T: ListRow>(
 
     private fun onItemSelected(item: T?, selected: Boolean){
         if(item != null) {
-            if(selected)
-                vm.selectedIds += item.id
-            else
-                vm.selectedIds -= item.id
-
+            if(selectionMode == SelectionMode.Single && !isContextAction){
+                vm.selectedId =item.id
+            }
+            else {
+                if (selected)
+                    vm.selectedIds += item.id
+                else
+                    vm.selectedIds -= item.id
+            }
             selectionListener?.invoke(item, selected)
         }
     }
 
-    private fun setListAdapterInternal(adapter: ListAdapter<T>) {
-        this.adapter = adapter
+    private fun initAdapter(
+        adapter: ListAdapter<T>,
+        vm: ListViewModel)
+    {
+
         with(adapter) {
+            try{
+                ld.value = null
+            }catch (ex: Exception){
+                Log.e("#LV","${ex.localizedMessage}")
+            }
+            selectedId = vm.selectedId
             selectedIds += vm.selectedIds
+            selectionMode = vm.selectionMode
             selectionListener = this@ListView::onItemSelected
             longClickListener = this@ListView::onLongClick
+            val liveList = vm.liveList ?: MutableLiveData()
+            vm.liveList = liveList
+            var list = liveList.value
+            if(list == null)
+                list = createList(ds)
+            ld.value = list as PagedList<T>
+            liveList.value = list
         }
 
-    }
+        if(vm.state != null)
+            layoutManager?.onRestoreInstanceState(vm.state)
 
-    /*class DataModel<T: ListRow>(
-        var selectedPositions: Array<Int> = arrayOf(),
-        val firstItemPosition: Int = 0,
-        val data: List<T> = listOf<T>(),
-        val operation: Operation? = null
-    ) : ListDataModel
-    {
-        override fun toString() = "$operation $data"
-    }*/
+    }
 
     class ListRowBase(
         override val id: Long,
@@ -211,31 +224,18 @@ open class ListView<T: ListRow>(
         }
     }
 
-    private class DefaultListAdapter(
-        context: Context
-    ) : ListAdapter<ListRow>(context) {
-
-        override val columnCount = 0
-        override val columnNames: Array<String> = emptyArray()
-
-        override fun getValueAt(item: ListRow, column: Int): String {
-            return ""
-        }
-    }
-
     abstract class ListAdapter<T: ListRow>(
         private val context: Context
     ) : PagedListAdapter<T, RecyclerView.ViewHolder>(
         object: DiffUtil.ItemCallback<T>(){
             override fun areItemsTheSame(oldItem: T, newItem: T): Boolean {
-                return false
+                return oldItem == newItem
             }
 
             override fun areContentsTheSame(oldItem: T, newItem: T): Boolean {
-                return false
+                return oldItem.id == newItem.id
             }}
     ) {
-
 
         var selectionListener: ((item: T?, selected: Boolean) -> Unit)? = null
         var longClickListener: ((item: T) -> Boolean)? = null
@@ -260,9 +260,11 @@ open class ListView<T: ListRow>(
             }
 
         val selectedIds = mutableListOf<Long>()
+        var ld: MutableLiveData<PagedList<T>> = MutableLiveData()
 
         protected abstract val columnCount: Int
         protected abstract val columnNames: Array<String>
+
         protected abstract fun getValueAt(item: T, column: Int): String
 
         private val createdViews = mutableSetOf<ListRowView>()
@@ -287,6 +289,54 @@ open class ListView<T: ListRow>(
                 }
             }
 
+        init {
+            ld.observe(context as LifecycleOwner, Observer {
+                submitList(it)
+            })
+        }
+
+        suspend fun selectById(id: Long): Int {
+
+            val list = ld.value as PagedList<T>
+            var pos = 0
+            withContext(Dispatchers.IO) {
+
+                var item: T? = null
+                while (true) {
+                    var count = 0
+                    while(true) {
+                        if(count>5) {
+                            Log.e("#AD","Not found last: $pos retries: $count")
+                            return@withContext -1
+                        }
+                        try {
+                            list.loadAround(pos)
+                            item = list.get(pos) as T
+                            count = 0
+                            Log.e("#AD","=> $pos")
+                            break
+                        }catch (ex: Exception){
+                            when(ex){
+                                is IndexOutOfBoundsException -> {
+                                    delay(800)
+                                    pos = 0
+                                    count++
+                                }
+                                else -> throw ex
+                            }
+                        }
+                    }
+                    if(item?.id == id)
+                        break
+                    pos++
+                }
+                selectedId = id
+                withContext(Dispatchers.Main) {
+                    notifyItemChanged(pos)
+                }
+            }
+            return pos
+        }
 
         open protected fun createRowView(context: Context): ListRowView {
             return ListRowView(context, columnCount, columnNames,textSize)
@@ -299,15 +349,10 @@ open class ListView<T: ListRow>(
             return ListViewHolder(v)
         }
 
-        /*override fun onViewRecycled(holder: ViewHolder) {
-            super.onViewRecycled(holder)
-            createdViews -= (holder.itemView as ListRowView)
-        }*/
-
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = getItem(position) as T
             val itemId = item.id
-
+            //Log.d("#AD","${item.id} / $position $selectedId")
             (holder.itemView as ListRowView).apply {
                 var i = 0
                 for(tv in columnViews)
@@ -321,12 +366,8 @@ open class ListView<T: ListRow>(
                     else
                         isActivated = false
                 }
-                else {
-                    //isActivated = selectedPositions.contains(position)
+                else
                     isActivated = selectedIds.contains(item.id)
-                    /*if(isActivated)
-                        Log.d("#VIEW","Selected $position")*/
-                }
 
                 val view = this
 
@@ -334,7 +375,6 @@ open class ListView<T: ListRow>(
                     visibility = if(isShowCheckBoxes) View.VISIBLE else GONE
                     setOnCheckedChangeListener {buttonView, isChecked ->  }
                     isChecked = selectedIds.contains(item.id)
-                        //selectedPositions.contains(position)
                     setOnCheckedChangeListener { buttonView, isChecked ->
                         if(isChecked) {
                             selectedIds += itemId
@@ -349,8 +389,10 @@ open class ListView<T: ListRow>(
                 }
 
                 setClickListener {
-                    if(!isContextAction)
+                    if(!isContextAction) {
                         selectItem(item, this, true)
+                        selectedId = item.id
+                    }
                 }
 
                 setLongClickListener {
@@ -375,7 +417,6 @@ open class ListView<T: ListRow>(
                     }
                 }
             }
-            //}
         }
 
         private fun selectItem(item: T, itemView: ListRowView, selected: Boolean) {
@@ -572,41 +613,16 @@ open class ListView<T: ListRow>(
         override fun loadInitial(
             params: LoadInitialParams,
             callback: LoadInitialCallback<T>
-        ) {
-            fetchData(0,params.requestedLoadSize, initCallback = callback)
-            /*scope.launch(Dispatchers.IO) {
-                try {
-                    Log.d("#DataSource","IL: ${params.requestedLoadSize}")
-                    val l: List<T> = loadData(0,params.requestedLoadSize)
-                    callback.onResult(l, 0)
-                }catch (ex: Exception){
-                    Log.e("#DataSource IL","${ex.localizedMessage}")
-                    callback.onResult(emptyList(),0)
-                }
-            }*/
 
-        }
+        ) = fetchData(0,params.requestedLoadSize, initCallback = callback)
 
-        override fun loadRange(params: LoadRangeParams, callback: LoadRangeCallback<T>) {
+        override fun loadRange(params: LoadRangeParams, callback: LoadRangeCallback<T>) =
             fetchData(params.startPosition,params.loadSize, callback = callback)
-            /*scope.launch(Dispatchers.IO) {
-                var l: List<T> = emptyList()
-                try {
-                    Log.d("#DataSource LR","${params.startPosition} : ${params.loadSize}")
-                    l = loadData(params.startPosition, params.loadSize)
-                }catch (ex: Exception){
-                    Log.e("#DataSource LR","${ex.localizedMessage}")
-                    //callback.onResult(emptyList())
-                }
-                withContext(Dispatchers.Main) {
-                    callback.onResult(l)
-                }
-            }*/
-        }
 
         private fun fetchData(start: Int, size: Int,
                               initCallback: LoadInitialCallback<T>? = null,
-                              callback: LoadRangeCallback<T>? = null) {
+                              callback: LoadRangeCallback<T>? = null
+        ){
 
             scope.launch(Dispatchers.IO) {
                 var l: List<T> = emptyList()
@@ -639,17 +655,17 @@ interface ListRepository<Value: ListRow> {
 }
 
 open class ListViewModel : ViewModel() {
-    var selectionMode = ListView.SelectionMode.Single
     val coroScope
         get() =  viewModelScope
 
+    var state: Parcelable? = null
+    var liveList: MutableLiveData<PagedList<out ListRow>>? = null
+    var selectionMode = ListView.SelectionMode.Single
     var selectedId: Long = -1
     var controller: ListControllerInterface? = null
-    var firstRowPosition = -1
     val selectedIds = mutableSetOf<Long>()
 }
 
-//interface ListDataModel
 interface ListControllerInterface
 interface ListRow {
     val id: Long
@@ -658,12 +674,4 @@ interface ListRow {
 
 interface Clickable {
     fun clickListener(l:(rsc:View)->Unit)
-}
-
-class ClickableImageView(context: Context) : ImageView(context), Clickable {
-    override fun clickListener(l: (rsc: View) -> Unit) {
-        setOnClickListener {
-            l(it)
-        }
-    }
 }
