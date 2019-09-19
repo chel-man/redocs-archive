@@ -17,6 +17,10 @@ import androidx.fragment.app.activityViewModels
 import com.redocs.archive.R
 import com.redocs.archive.data.documents.DataSource
 import com.redocs.archive.data.documents.Repository
+import com.redocs.archive.framework.EventBus
+import com.redocs.archive.framework.EventBusSubscriber
+import com.redocs.archive.framework.subscribe
+import com.redocs.archive.ui.events.PartitionNodeSelectedEvent
 import com.redocs.archive.ui.models.DocumentsViewModel
 import com.redocs.archive.ui.utils.convertDpToPixel
 import com.redocs.archive.ui.utils.showError
@@ -25,7 +29,11 @@ import com.redocs.archive.ui.view.list.ListView
 import com.redocs.archive.ui.view.list.ListRow
 import kotlinx.coroutines.delay
 
-class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
+class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel, EventBusSubscriber {
+
+    override var isActive = false
+
+    private var parentId = 0L
 
     override var contextActionModeController: ContextActionModeController = ContextActionModeControllerStub()
         set(value){
@@ -33,15 +41,16 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
             field = value
         }
 
-    override var isActive = false
-    //override var actionListener: (Boolean) -> Unit = {}
-
     private var listView: DocumentListView? = null
     private var repo: Repository? = null
     private val vm by activityViewModels<DocumentsViewModel>()
 
     constructor(ds: DataSource):this() {
         this.repo = Repository(ds)
+    }
+
+    init {
+        subscribe(PartitionNodeSelectedEvent::class.java)
     }
 
     override fun onCreateView(
@@ -57,18 +66,19 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel {
         return listView
     }
 
+    override suspend fun onEvent(evt: EventBus.Event<*>) {
+        Log.d("#DF","EVENT: $evt")
+        when(evt){
+            is PartitionNodeSelectedEvent -> parentId = evt.data
+        }
+    }
+
     override fun activate() {
-        /*if(!isActive) {
-            isActive = true
-            with(listView) {
-                setDataSource(DocumentListDataSource())
-                refresh()
-            }
-        }*/
+        if(parentId > 0)
+            listView?.refresh(parentId)
     }
 
     override fun deactivate() {
-
     }
 
 }
@@ -88,9 +98,6 @@ private class DocumentListView(
             true
         }
         dataSource = DocumentListDataSource(context)
-        Handler().postDelayed(10000) {
-            selectedId= 135
-        }
 
     }
 
@@ -109,7 +116,8 @@ private class DocumentListView(
     fun refresh(id: Long){
         with(dataSource as DocumentListDataSource){
             clear()
-            this.parentId = id
+            Log.d("#DLV","REFRESHED $id")
+            parentId = id
         }
         refresh()
     }
@@ -207,6 +215,7 @@ private class DocumentListDataSource(private val context: Context) : ListView.Li
     }
 
     private fun genParentData() {
+        Log.d("#DDS","DATA generated")
         for(i in 1..200L)
             data += ListView.ListRowBase(i-1, "Child ${i-1}")
     }

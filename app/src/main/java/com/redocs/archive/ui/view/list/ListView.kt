@@ -3,15 +3,12 @@ package com.redocs.archive.ui.view.list
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
-import android.os.Handler
 import android.os.Parcelable
-import android.text.Layout
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.CheckBox
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.ColorRes
@@ -28,10 +25,13 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.redocs.archive.R
-import com.redocs.archive.ui.view.NotFoundException
 import kotlinx.coroutines.*
 import java.lang.IndexOutOfBoundsException
 import java.util.concurrent.Executor
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 open class ListView<T: ListRow>(
     context: Context,
@@ -61,19 +61,6 @@ open class ListView<T: ListRow>(
             field = value
         }
 
-    var selectedId: Long
-        set(value) {
-            vm.coroScope.launch {
-                val pos = (adapter as ListAdapter<T>).selectById(value)
-                if(pos > -1)
-                    scrollToPosition(pos)
-                else
-                    throw NotFoundException(value,"Item with id = $id not found")
-            }
-        }
-        @Deprecated("Property can only be written.", level = DeprecationLevel.ERROR)
-        get() = throw NotImplementedError()
-
     private object EmptyDataSource : ListDataSource<ListRow>() {
         override fun onError(exception: Exception) {}
         override suspend fun loadData(startPosition: Int, loadSize: Int): List<ListRow> = emptyList()
@@ -84,11 +71,6 @@ open class ListView<T: ListRow>(
     private lateinit var ds: ListDataSource<T>
 
     private var screenRows: Int = 0
-
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        vm.state = layoutManager?.onSaveInstanceState()
-    }
 
     init {
 
@@ -109,21 +91,32 @@ open class ListView<T: ListRow>(
                             com.redocs.archive.ui.utils.spToPx(
                                 (adapter as ListAdapter<T>).textSize,
                                 context)
-                    initAdapter(adapter,vm)
+                    //initAdapter(adapter,vm)
                 }
             })
         }
 
     }
 
-    protected fun createController(scope: CoroutineScope): ListController<T> {
-        return EmptyListController(scope) as ListController<T>
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        vm.state = layoutManager?.onSaveInstanceState()
     }
+
+    fun selectById(id: Long) =
+        vm.coroScope.launch {
+            val pos = (adapter as ListAdapter<T>).selectById(id)
+            if (pos > -1)
+                scrollToPosition(pos)
+        }
+
+    protected fun createController(scope: CoroutineScope) =
+        EmptyListController(scope) as ListController<T>
 
     private fun createList(ds: ListDataSource<T>): PagedList<T> {
         val pageSize = screenRows*2
         val prefetch = screenRows/2
-        val maxSize = 2*prefetch+pageSize
+        val maxSize = 3*pageSize
 
         return PagedList(
             ds,
@@ -205,6 +198,7 @@ open class ListView<T: ListRow>(
             var list = liveList.value
             if(list == null)
                 list = createList(ds)
+
             ld.value = list as PagedList<T>
             liveList.value = list
         }
@@ -222,6 +216,23 @@ open class ListView<T: ListRow>(
         override fun toString(): String {
             return "$id : $name"
         }
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as ListRow
+
+            if (id != other.id) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            return id.hashCode()
+        }
+
+
     }
 
     abstract class ListAdapter<T: ListRow>(
@@ -295,47 +306,49 @@ open class ListView<T: ListRow>(
             })
         }
 
-        suspend fun selectById(id: Long): Int {
+        suspend fun selectById(id: Long) = withContext(Dispatchers.IO) {
 
             val list = ld.value as PagedList<T>
             var pos = 0
-            withContext(Dispatchers.IO) {
+            var page = 0
 
-                var item: T? = null
-                while (true) {
-                    var count = 0
-                    while(true) {
-                        if(count>5) {
-                            Log.e("#AD","Not found last: $pos retries: $count")
-                            return@withContext -1
-                        }
-                        try {
-                            list.loadAround(pos)
-                            item = list.get(pos) as T
-                            count = 0
-                            Log.e("#AD","=> $pos")
-                            break
-                        }catch (ex: Exception){
-                            when(ex){
-                                is IndexOutOfBoundsException -> {
-                                    delay(800)
-                                    pos = 0
-                                    count++
-                                }
-                                else -> throw ex
-                            }
-                        }
+            while (true) {
+                var count = 0
+                var delay = 100L
+                var loadingPage = false
+                while(true) {
+                    if(count>5) {
+                        Log.e("#AD","Not found last: $pos retries: $count")
+                        return@withContext -1
                     }
-                    if(item?.id == id)
+                    try {
+                        Log.d("#AD", "=> $pos / $count / ${list.positionOffset}")
+                        list.loadAround(pos)
+                        if(loadingPage){
+                            loadingPage = false
+                            pos = 0
+                            continue
+                        }
                         break
-                    pos++
+                    }catch (ex: IndexOutOfBoundsException){
+                        Log.e("#AD", "======================")
+                        loadingPage = true
+                        delay(delay)
+                        delay *=2
+                        pos -= list.positionOffset
+                        count++
+                    }
                 }
-                selectedId = id
-                withContext(Dispatchers.Main) {
-                    notifyItemChanged(pos)
-                }
+                val item = list[pos]
+                if(item?.id == id)
+                    break
+                pos++
             }
-            return pos
+            selectedId = id
+            withContext(Dispatchers.Main) {
+                notifyItemChanged(pos)
+            }
+            pos
         }
 
         open protected fun createRowView(context: Context): ListRowView {
@@ -607,6 +620,7 @@ open class ListView<T: ListRow>(
     abstract class ListDataSource<T: ListRow> : PositionalDataSource<T>() {
 
         lateinit var scope: CoroutineScope
+        private var waitCont: Continuation<Unit>? = null
 
         abstract fun onError(exception: Exception)
 
@@ -625,22 +639,40 @@ open class ListView<T: ListRow>(
         ){
 
             scope.launch(Dispatchers.IO) {
+
+                val wc = waitCont
                 var l: List<T> = emptyList()
                 try {
                     //Log.d("#DataSource","$start : $size")
                     l = loadData(start, size)
+                    wc?.apply {
+                        waitCont = null
+                        resume(Unit)
+                    }
                 }catch (ex: Exception){
                     onError(ex)
+                    wc?.apply {
+                        waitCont = null
+                        resumeWithException(ex)
+                    }
                 }
+                val ll = l
                 withContext(Dispatchers.Main) {
-                    initCallback?.onResult(l,0)
-                    callback?.onResult(l)
+                    initCallback?.onResult(ll,0)
+                    callback?.onResult(ll)
                 }
             }
 
         }
 
         protected abstract suspend fun loadData(startPosition: Int, loadSize: Int): List<T>
+
+        suspend fun waitDataReady(id: Long) {
+            val r = suspendCoroutine<Unit> {continuation ->
+                waitCont = continuation
+            }
+            return r
+        }
     }
 
     enum class SelectionMode {
@@ -655,6 +687,7 @@ interface ListRepository<Value: ListRow> {
 }
 
 open class ListViewModel : ViewModel() {
+
     val coroScope
         get() =  viewModelScope
 

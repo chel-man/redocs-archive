@@ -12,6 +12,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.redocs.archive.data.partitions.PartitionsStructureDataSource
 import com.redocs.archive.data.partitions.PartitionsStructureRepository
+import com.redocs.archive.framework.EventBus
+import com.redocs.archive.ui.events.ActivateDocumentListEvent
+import com.redocs.archive.ui.events.PartitionNodeSelectedEvent
 import com.redocs.archive.ui.view.partitions.Action
 import com.redocs.archive.ui.view.partitions.PartitionStructureTreeViewNode
 import com.redocs.archive.ui.view.partitions.PartitionStructureViewModel
@@ -65,11 +68,11 @@ class StructureFragment() : Fragment(),  ContextActionBridge {
     }
 
     private fun itemSelected(node: PartitionStructureTreeViewNode?){
-        /*vm.coroScope.launch {
-            EventBus.send(Event(MessageType.PartitionNodeSelected, node?.id))
-        }*/
+        if(node != null)
+            EventBus.publish(PartitionNodeSelectedEvent(node.id))
     }
 }
 
 private fun openDocumentList(id: Long) {
+    EventBus.publish(ActivateDocumentListEvent())
 }

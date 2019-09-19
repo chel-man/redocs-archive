@@ -19,20 +19,24 @@ package com.redocs.archive.ui
 import android.os.Bundle
 import android.util.Log
 import android.view.*
+import androidx.core.view.get
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import com.redocs.archive.R
-import com.redocs.archive.framework.InMemoryDocumentsDataSource
-import com.redocs.archive.framework.InMemoryPartitionsStructureDataSource
+import com.redocs.archive.framework.*
+import com.redocs.archive.ui.events.ActivateDocumentListEvent
 import com.redocs.archive.ui.view.ActivablePanel
 import com.redocs.archive.ui.view.tabs.*
 import kotlinx.android.synthetic.main.home_fragment.*
 
 
-class HomeFragment : Fragment(), ActivablePanel {
+class HomeFragment : Fragment(), EventBusSubscriber {
 
-    override var isActive = false
     private lateinit var tabs: TabBarView
+
+    init {
+        subscribe(ActivateDocumentListEvent::class.java)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -82,10 +86,10 @@ class HomeFragment : Fragment(), ActivablePanel {
 
     }
 
-    override fun activate() {
-    }
-
-    override fun deactivate() {
+    override suspend fun onEvent(evt: EventBus.Event<*>) {
+        when(evt){
+            is ActivateDocumentListEvent -> tabs.get(1).isSelected = true
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -118,8 +122,6 @@ class HomeFragment : Fragment(), ActivablePanel {
 }
 
 private fun tabSelected(prevTab: TabBarView.Tab?, tab: TabBarView.Tab) {
-    /*Log.d("#TABS","SELECTED ${tab.title}")
     (prevTab?.fragment as? ActivablePanel)?.deactivate()
     (tab.fragment as? ActivablePanel)?.activate()
-     */
 }

@@ -10,8 +10,10 @@ fun showError(context: Context, ex: Exception) {
 }
 
 fun showError(context: Context, msg: String) {
-    Toast.makeText(context, msg, Toast.LENGTH_SHORT)
-        .show()
+    try {
+        Toast.makeText(context, msg, Toast.LENGTH_SHORT)
+            .show()
+    }catch (ex: Exception){}
 }
 
 private var metrics: DisplayMetrics? = null

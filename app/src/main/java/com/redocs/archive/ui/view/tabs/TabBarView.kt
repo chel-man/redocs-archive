@@ -30,7 +30,7 @@ class TabBarView(
         override fun onPageSelected(position: Int) {
             val tab = (adapter as Adapter).getTab(position)
             ////Log.d("#TABS","selecting $position [${tab.title}] selected: $selected  tab: $tab")
-            //selectionListener?.invoke(selected,tab)
+            selectionListener?.invoke(selected,tab)
             selected = tab
         }
     }
