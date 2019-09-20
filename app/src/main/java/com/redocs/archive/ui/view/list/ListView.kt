@@ -91,7 +91,8 @@ open class ListView<T: ListRow>(
                             com.redocs.archive.ui.utils.spToPx(
                                 (adapter as ListAdapter<T>).textSize,
                                 context)
-                    //initAdapter(adapter,vm)
+                    if(vm.liveList?.value != null)
+                        initAdapter(adapter,vm)
                 }
             })
         }
@@ -135,15 +136,22 @@ open class ListView<T: ListRow>(
             })
     }
 
+    fun reload(){
+        initAdapter(adapter as ListAdapter<T>,vm)
+    }
+
     fun refresh(){
         clearViewModel(vm)
         initAdapter(adapter as ListAdapter<T>,vm)
     }
 
     private fun clearViewModel(vm: ListViewModel){
-        vm.liveList?.value = null
-        vm.selectedIds.clear()
-        vm.state = null
+        with(vm){
+            liveList?.value = null
+            selectedIds.clear()
+            selectedId = -1
+            state = null
+        }
     }
 
     protected abstract class ListController<T : ListRow>(

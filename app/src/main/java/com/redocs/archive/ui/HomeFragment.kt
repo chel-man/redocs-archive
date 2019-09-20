@@ -17,25 +17,53 @@
 package com.redocs.archive.ui
 
 import android.os.Bundle
-import android.util.Log
 import android.view.*
-import androidx.core.view.get
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import com.redocs.archive.R
 import com.redocs.archive.framework.*
 import com.redocs.archive.ui.events.ActivateDocumentListEvent
+import com.redocs.archive.ui.events.ShowDocumentEvent
 import com.redocs.archive.ui.view.ActivablePanel
-import com.redocs.archive.ui.view.tabs.*
+import com.redocs.archive.ui.view.tabs.TabBarView
+import com.redocs.archive.ui.view.tabs.tabBar
 import kotlinx.android.synthetic.main.home_fragment.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 
-class HomeFragment : Fragment(), EventBusSubscriber {
+class HomeFragment : Fragment(), EventBusSubscriber, BackButtonInterceptor {
 
+    private lateinit var unsubscribeListener: () -> Unit
     private lateinit var tabs: TabBarView
 
     init {
-        subscribe(ActivateDocumentListEvent::class.java)
+        unsubscribeListener = subscribe(
+            ActivateDocumentListEvent::class.java,
+            ShowDocumentEvent::class.java)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unsubscribeListener()
+    }
+
+    override suspend fun onEvent(evt: EventBus.Event<*>) {
+        when(evt){
+            is ActivateDocumentListEvent ->
+                withContext(Dispatchers.Main){
+                    tabs.selectTab(1)}
+
+            is ShowDocumentEvent -> {
+                withContext(Dispatchers.Main){
+
+                    getRootLayout().apply {
+                        removeView(tabs)
+                        addView(DocumentFragment.DocumentView(context, evt.data))
+                    }
+                }
+            }
+        }
     }
 
     override fun onCreateView(
@@ -82,14 +110,8 @@ class HomeFragment : Fragment(), EventBusSubscriber {
 
         tabs.selectionListener = ::tabSelected
 
-        (view as ViewGroup).addView(tabs)
+        getRootLayout().addView(tabs)
 
-    }
-
-    override suspend fun onEvent(evt: EventBus.Event<*>) {
-        when(evt){
-            is ActivateDocumentListEvent -> tabs.get(1).isSelected = true
-        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -113,15 +135,31 @@ class HomeFragment : Fragment(), EventBusSubscriber {
             controllerContext.startActionMode(ContextActionSourceInterceptor())
 
             dimmer.isVisible = source.lockContent
-            if(dimmer.isVisible)
-                dimmer.bringToFront()
+            /*if(dimmer.isVisible)
+                dimmer.bringToFront()*/
             tabs.isHidded = true
         }
     }
 
+    override fun onBackPressed(): Boolean {
+
+        with(getRootLayout()){
+            val fv = getChildAt(0)
+            if(fv !is TabBarView) {
+                removeView(fv)
+                addView(tabs)
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun getRootLayout() = home_root_view
 }
 
 private fun tabSelected(prevTab: TabBarView.Tab?, tab: TabBarView.Tab) {
-    (prevTab?.fragment as? ActivablePanel)?.deactivate()
-    (tab.fragment as? ActivablePanel)?.activate()
+    try {
+        (prevTab?.fragment as? ActivablePanel)?.deactivate()
+        (tab.fragment as? ActivablePanel)?.activate()
+    }catch (ex: UninitializedPropertyAccessException){}
 }

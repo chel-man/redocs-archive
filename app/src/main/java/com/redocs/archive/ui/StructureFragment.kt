@@ -74,5 +74,6 @@ class StructureFragment() : Fragment(),  ContextActionBridge {
 }
 
 private fun openDocumentList(id: Long) {
+    EventBus.publish(PartitionNodeSelectedEvent(id))
     EventBus.publish(ActivateDocumentListEvent())
 }

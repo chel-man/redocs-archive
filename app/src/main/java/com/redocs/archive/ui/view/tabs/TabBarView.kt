@@ -35,6 +35,14 @@ class TabBarView(
         }
     }
 
+    var isHidded: Boolean = false
+        set(value) {
+            tabsHeader.apply{
+                //isEnabled = hidden
+                visibility = if (!value) View.VISIBLE else View.GONE
+            }
+        }
+
     init {
         tag="${this}"
         this.id= getNextId(parent)
@@ -47,13 +55,10 @@ class TabBarView(
         addOnPageChangeListener(pl)
     }
 
-    var isHidded: Boolean = false
-        set(value) {
-            tabsHeader.apply{
-                //isEnabled = hidden
-                visibility = if (!value) View.VISIBLE else View.GONE
-            }
-        }
+    fun selectTab(index: Int){
+        tabsHeader.setScrollPosition(index,0F,true)
+        currentItem = index
+    }
 
     override fun onTouchEvent(ev: MotionEvent?): Boolean {
         if(isEnabled)

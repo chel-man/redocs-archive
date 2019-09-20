@@ -2,7 +2,6 @@ package com.redocs.archive.ui
 
 import android.content.Context
 import android.os.Bundle
-import android.os.Handler
 import android.util.Log
 import android.view.*
 import android.widget.ImageView
@@ -10,30 +9,39 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.view.ActionMode
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
-import androidx.core.os.postDelayed
 import androidx.core.view.ViewCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.redocs.archive.R
 import com.redocs.archive.data.documents.DataSource
 import com.redocs.archive.data.documents.Repository
+import com.redocs.archive.domain.document.Document
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.framework.EventBusSubscriber
 import com.redocs.archive.framework.subscribe
+import com.redocs.archive.framework.unsubscribe
 import com.redocs.archive.ui.events.PartitionNodeSelectedEvent
+import com.redocs.archive.ui.events.ShowDocumentEvent
+import com.redocs.archive.ui.events.ShowDocumentListRequestEvent
 import com.redocs.archive.ui.models.DocumentsViewModel
 import com.redocs.archive.ui.utils.convertDpToPixel
 import com.redocs.archive.ui.utils.showError
 import com.redocs.archive.ui.view.ActivablePanel
-import com.redocs.archive.ui.view.list.ListView
 import com.redocs.archive.ui.view.list.ListRow
+import com.redocs.archive.ui.view.list.ListView
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel, EventBusSubscriber {
 
+    private var unsubscribeListener: () -> Unit
+    private var documentList: List<Document>? = null
+    private var documentListChanged = true
+
     override var isActive = false
 
-    private var parentId = 0L
+    private var parentId = Long.MIN_VALUE
 
     override var contextActionModeController: ContextActionModeController = ContextActionModeControllerStub()
         set(value){
@@ -46,11 +54,34 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel, Eve
     private val vm by activityViewModels<DocumentsViewModel>()
 
     constructor(ds: DataSource):this() {
-        this.repo = Repository(ds)
+        repo = Repository(ds)
     }
 
     init {
-        subscribe(PartitionNodeSelectedEvent::class.java)
+        unsubscribeListener = subscribe(
+            PartitionNodeSelectedEvent::class.java,
+            ShowDocumentListRequestEvent::class.java)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unsubscribeListener()
+    }
+
+    override suspend fun onEvent(evt: EventBus.Event<*>) {
+
+        when(evt){
+            is PartitionNodeSelectedEvent -> {
+                    documentList = null
+                    documentListChanged = true
+                    parentId = evt.data
+                }
+            is ShowDocumentListRequestEvent -> {
+                    parentId = Long.MIN_VALUE
+                    documentList = evt.data
+                    documentListChanged = true
+                }
+        }
     }
 
     override fun onCreateView(
@@ -58,7 +89,8 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel, Eve
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-
+        val repo = repo ?: vm.repository as Repository
+        vm.repository=repo
         listView = DocumentListView(context as Context, vm).apply {
             contextActionModeController = this@DocumentsFragment.contextActionModeController
             //selectionMode = ListView.SelectionMode.Multiply
@@ -66,15 +98,15 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel, Eve
         return listView
     }
 
-    override suspend fun onEvent(evt: EventBus.Event<*>) {
-        Log.d("#DF","EVENT: $evt")
-        when(evt){
-            is PartitionNodeSelectedEvent -> parentId = evt.data
-        }
-    }
-
     override fun activate() {
-        if(parentId > 0)
+        val l = documentList
+        if(l != null) {
+            if(documentListChanged) {
+                documentListChanged = false
+                listView?.refresh(l.map { it.toListRow() })
+            }
+        }
+        else if(parentId != Long.MIN_VALUE)
             listView?.refresh(parentId)
     }
 
@@ -86,7 +118,11 @@ class DocumentsFragment() : Fragment(), ContextActionBridge, ActivablePanel, Eve
 private class DocumentListView(
     context: Context,
     vm: DocumentsViewModel
-) : ListView<ListRow>(context, vm,ListAdapter(context)), ContextActionSource {
+) : ListView<ListRow>(
+        context, vm,
+        ListAdapter(context,vm.coroScope,vm.repository as Repository)
+    ), ContextActionSource
+{
 
     var contextActionModeController: ContextActionModeController? = null
 
@@ -97,29 +133,30 @@ private class DocumentListView(
             contextActionModeController?.startActionMode(this)
             true
         }
-        dataSource = DocumentListDataSource(context)
+        dataSource = DocumentListDataSource(context, vm.repository as Repository)
 
     }
 
     fun refresh(data: Collection<ListRow>) {
 
-        val ds = DocumentListDataSource(context)
-        with(ds){
+        with(dataSource as DocumentListDataSource){
             clear()
             parentId = Long.MIN_VALUE
             this.data += data
         }
-        dataSource = ds
         refresh()
     }
 
     fun refresh(id: Long){
-        with(dataSource as DocumentListDataSource){
-            clear()
-            Log.d("#DLV","REFRESHED $id")
-            parentId = id
+
+        val ds = dataSource as DocumentListDataSource
+        if(ds.parentId != id) {
+            with(ds){
+                clear()
+                parentId = id
+            }
+            refresh()
         }
-        refresh()
     }
 
     override fun createContextActionMenu(inflater: MenuInflater, menu: Menu) {
@@ -139,14 +176,25 @@ private class DocumentListView(
         return true
     }
 
-    private class ListAdapter(context: Context) : ListView.ListAdapter<ListRow>(context) {
+    private class ListAdapter(
+        context: Context,
+        val scope: CoroutineScope,
+        val repo: Repository
+    ) : ListView.ListAdapter<ListRow>(
+        context
+    ) {
 
         override val columnCount = 2
         override val columnNames = arrayOf("ID","Name")
 
         init {
             controlClickListener = { item, src ->
-                Log.d("#DLA", "Control clicked: ${item.id}")
+                scope.launch {
+                    EventBus.publish(
+                        ShowDocumentEvent(
+                            repo.get(item.id)))
+
+                }
             }
 
         }
@@ -192,13 +240,14 @@ private class DocumentListView(
     }
 }
 
-private class DocumentListDataSource(private val context: Context) : ListView.ListDataSource<ListRow>() {
+private class DocumentListDataSource(
+    private val context: Context,
+    private val repo: Repository
+
+) : ListView.ListDataSource<ListRow>() {
 
     var data:  List<ListRow> = mutableListOf()
     var parentId: Long = Long.MIN_VALUE
-        set(value){
-            genParentData()
-        }
 
     init {
 
@@ -214,26 +263,27 @@ private class DocumentListDataSource(private val context: Context) : ListView.Li
         (data as MutableList<ListRow>).clear()
     }
 
-    private fun genParentData() {
-        Log.d("#DDS","DATA generated")
-        for(i in 1..200L)
-            data += ListView.ListRowBase(i-1, "Child ${i-1}")
-    }
-
     override fun onError(exception: Exception) {
         Log.e("#DataSource","${exception.localizedMessage}")
         showError(context, exception)
     }
 
     override suspend fun loadData(start: Int, size: Int): List<ListRow> {
-        var end = start+size
-        if(start>data.size-1)
+
+        if(parentId != Long.MIN_VALUE)
+            return repo.list(parentId,start,size).map { it.toListRow() }
+
+        var end = start + size
+        if (start > data.size - 1)
             return listOf()
-        if(end>data.size-1)
+        if (end > data.size - 1)
             end = data.size
-        Log.d("#ListRepo","RESP: $start : $end")
+        //Log.d("#ListRepo", "RESP: $start : $end")
         delay(500)
-        return data.subList(start,end)
+        return data.subList(start, end)
     }
+
 }
+
+private fun Document.toListRow() = ListView.ListRowBase(id,name) as ListRow
 

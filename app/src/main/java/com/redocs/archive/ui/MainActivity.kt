@@ -1,6 +1,7 @@
 package com.redocs.archive.ui
 
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
@@ -142,23 +143,21 @@ class MainActivity : AppCompatActivity(), ContextActionModeController {
             })
     }
 
+    override fun onBackPressed() {
+
+        if((supportFragmentManager
+                .fragments[0]
+                    .childFragmentManager
+                        .fragments[0]as? BackButtonInterceptor)?.
+                            onBackPressed() != true)
+            super.onBackPressed()
+    }
 }
 
 interface ContextActionModeController {
     fun startActionMode(source: ContextActionSource)
 }
-/*class MyNavigationView(context: Context, attrs: AttributeSet?) : NavigationView(context, attrs) {
 
-    override fun onTouchEvent(ev: MotionEvent?): Boolean {
-        if(isEnabled)
-            return super.onTouchEvent(ev)
-        return false
-    }
-
-    override fun onInterceptTouchEvent(event: MotionEvent?): Boolean {
-        if(isEnabled)
-            return super.onInterceptTouchEvent(event)
-        return false
-    }
-
-}*/
+interface BackButtonInterceptor {
+    fun onBackPressed(): Boolean
+}

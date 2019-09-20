@@ -1,5 +1,6 @@
 package com.redocs.archive.framework
 
+import androidx.fragment.app.Fragment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -72,8 +73,11 @@ interface EventBusSubscriber {
     suspend fun onEvent(evt: EventBus.Event<*>)
 }
 
-fun EventBusSubscriber.subscribe(vararg evts: Class<out EventBus.Event<*>>) {
+fun EventBusSubscriber.subscribe(vararg evts: Class<out EventBus.Event<*>>): ()->Unit {
     EventBus.subscribe(this, *evts)
+    return {
+        unsubscribe()
+    }
 }
 
 fun EventBusSubscriber.unsubscribe() {
