@@ -17,24 +17,51 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.redocs.archive.domain.document.DataType
 import com.redocs.archive.domain.document.Document
 import com.redocs.archive.domain.document.FieldType
-import org.w3c.dom.Text
 import java.util.*
-import android.icu.lang.UCharacter.GraphemeClusterBreak.T
-import androidx.core.view.MarginLayoutParamsCompat
 import androidx.core.view.setPadding
+import com.redocs.archive.framework.EventBus
+import com.redocs.archive.framework.EventBusSubscriber
+import com.redocs.archive.framework.subscribe
+import com.redocs.archive.ui.events.DocumentSelectedEvent
+import com.redocs.archive.ui.utils.ShortDate
+import com.redocs.archive.ui.view.ActivablePanel
+import java.lang.NullPointerException
 
 
-class DocumentFragment() : Fragment() {
+class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
-    private lateinit var doc: Document
-    private var model: DocumentModel? = null
+    override var isActive = false
+
     private val vm by activityViewModels<DocumentViewModel>()
 
-    constructor(doc: Document) : this() {
-        this.doc = doc
+    init {
+        subscribe(DocumentSelectedEvent::class.java)
+    }
+
+    override fun onEvent(evt: EventBus.Event<*>) {
+        when(evt){
+            is DocumentSelectedEvent -> vm.document = evt.data
+        }
+    }
+
+    override fun activate() {
+        createView(vm.document)
+    }
+
+    override fun deactivate() {
+    }
+
+    private fun createView(document: Document?) {
+
+        with(view as ViewGroup) {
+            try {
+                removeViewAt(0)
+            }catch (npe: NullPointerException){}
+            if (document != null)
+                addView(DocumentView(context, document))
+        }
     }
 
     override fun onCreateView(
@@ -43,26 +70,33 @@ class DocumentFragment() : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
 
-        val dm = model ?: createDocumentModel(context as Context,doc)
-        vm.model = dm
+        return LinearLayoutCompat(context).apply {
+            layoutParams = LinearLayoutCompat.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            ).apply {
+                setMargins(15)
+            }
 
-        return DocumentView(context as Context,dm)
+        }
     }
 
-    data class DocumentModel(
-        val id: Long,
-        val fields: Collection<FieldView<*>>
-    )
 
-    abstract class FieldView<T>(
+    internal open class FieldView(
         context: Context,
-        val title: String,
-        val value: T?
+        private val type: FieldType,
+        title: String,
+        value: String?
 
     ) : TableRow(context)
     {
-        abstract val type: FieldType
-        protected open fun getAlignment(): Int = Gravity.START
+        protected open fun getAlignment() =
+            when(type){
+                FieldType.Integer,
+                FieldType.Decimal -> Gravity.END
+                else ->
+                    Gravity.START
+            }
 
         init {
 
@@ -72,118 +106,45 @@ class DocumentFragment() : Fragment() {
                     gravity = Gravity.END
                 })
             addView(
-                TextView(context).apply {
-                    text = "$value"
-                    //textAlignment = alignment
-                    gravity = getAlignment()
-                    background = GradientDrawable().apply {
-                        setColor(Color.TRANSPARENT) // Changes this drawbale to use a single color instead of a gradient
-                        cornerRadius = 5f
-                        setStroke(1, Color.BLACK)}
-                    //setPadding(8)
+                createValueView(value).apply {
                     layoutParams = generateDefaultLayoutParams().apply {
-                        setMargins(0,0,10,0)
+                        setMargins(0, 0, 10, 0)
+                        weight = 1F
                     }
                 })
+
             setPadding(4)
         }
+
+        protected open fun createValueView(value: String?): View =
+            TextView(context).apply {
+                text = value ?: ""
+                gravity = getAlignment()
+                background = GradientDrawable().apply {
+                    setColor(Color.TRANSPARENT)
+                    cornerRadius = 5f
+                    setStroke(1, Color.BLACK)}
+            }
+
     }
 
-    class TextFieldView(
+    internal class DateFieldView(
         context: Context?,
-        df: Document.Field
-
-    ) : FieldView<String>(
+        df: Document.Field,
+        value: String
+    ) : FieldView(
         context as Context,
+        FieldType.Date,
         df.title,
-        df.value as String?
-    ){
-        override val type = FieldType.Text
-    }
-
-    class IntFieldView(
-        context: Context?,
-        df: Document.Field
-
-    ) : FieldView<Int>(
-        context as Context,
-        df.title,
-        df.value as Int
-    ){
-        override val type = FieldType.Integer
-        override fun getAlignment() = Gravity.END
-    }
-
-    class DecimalFieldView(
-        context: Context?,
-        df: Document.Field
-
-    ) : FieldView<Double>(
-        context as Context,
-        df.title,
-        df.value as Double
-    ){
-        override val type = FieldType.Decimal
-        override fun getAlignment() = Gravity.END
-    }
-
-    class DateFieldView(
-        context: Context?,
-        df: Document.Field
-
-    ) : FieldView<Date>(
-        context as Context,
-        df.title,
-        df.value as Date?
-    ){
-        override val type = FieldType.Text
-    }
-
-    class LongTextFieldView(
-        context: Context?,
-        df: Document.Field
-
-    ) : FieldView<String>(
-        context as Context,
-        df.title,
-        df.value as String?
-    ){
-        override val type = FieldType.Text
-    }
-
-    class DictionaryFieldView(
-        context: Context?,
-        df: Document.Field
-
-    ) : FieldView<String>(
-        context as Context,
-        df.title,
-        df.value as String?
-    ){
-        override val type = FieldType.Text
-    }
-
-    class MVDictionaryFieldView(
-        context: Context?,
-        df: Document.Field
-
-    ) : FieldView<String>(
-        context as Context,
-        df.title,
-        df.value as String?
-    ){
-        override val type = FieldType.Text
-    }
+        value
+    )
 
     class DocumentView(
         context: Context,
-        private val model: DocumentModel
-    ) : LinearLayoutCompat(
+        doc: Document?
+    ) : CardView(
         context
     ) {
-
-        constructor(context: Context, doc: Document) :
-                this(context,createDocumentModel(context,doc))
 
         init {
 
@@ -191,59 +152,55 @@ class DocumentFragment() : Fragment() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             ).apply {
-                setMargins(15)
+                setMargins(5)
+                radius = 20F
             }
-            //setBackgroundColor(Color.LTGRAY)
-
-            val cardView =CardView(context).apply {
-                layoutParams = LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                ).apply {
-                    setMargins(5)
-                    radius = 20F
-                }
-                preventCornerOverlap = true
-            }
+            preventCornerOverlap = true
 
             val grid = TableLayout(context).apply {
                 setColumnStretchable(1,true)
                 //setColumnShrinkable(1,true)
             }
-            val m = model
-            for(fv in m.fields)
-                grid.addView(fv)
-            cardView.addView(grid)
-            addView(cardView)
+            if(doc != null) {
+                for (fv in createViews(context, doc))
+                    grid.addView(fv)
+            }
+            addView(grid)
         }
+
+        fun allowClose() = true
+
+        private fun createViews(context: Context, doc: Document?): Collection<DocumentFragment.FieldView> {
+            val fields = mutableListOf<DocumentFragment.FieldView>()
+            doc?.let{
+                for(df in it.fields)
+                    fields += createFieldView(context,df)
+            }
+            return fields
+        }
+
     }
 }
 
 class DocumentViewModel : ViewModel() {
 
     val coroScope= viewModelScope
-    var model: DocumentFragment.DocumentModel? = null
+    var document: Document? = null
     var topField = 0
 }
 
-private fun createDocumentModel(context: Context,doc: Document): DocumentFragment.DocumentModel {
-    val fields = mutableListOf<DocumentFragment.FieldView<*>>()
-    for(df in doc.fields)
-        fields += createFieldView(context,df)
-    val dm = DocumentFragment.DocumentModel(doc.id, fields)
-    return dm
-}
-
-private fun createFieldView(context: Context,df: Document.Field): DocumentFragment.FieldView<*> =
+private fun createFieldView(context: Context,df: Document.Field): DocumentFragment.FieldView =
     when(df.type){
-        FieldType.Text -> DocumentFragment.TextFieldView(context, df)
-        FieldType.Integer -> DocumentFragment.IntFieldView(context, df)
-        FieldType.Decimal -> DocumentFragment.DecimalFieldView(context, df)
-        FieldType.Date -> DocumentFragment.DateFieldView(context, df)
-        FieldType.LongText-> DocumentFragment.LongTextFieldView(context, df)
-        FieldType.Dictionary -> DocumentFragment.DictionaryFieldView(context, df)
-        FieldType.MVDictionary -> DocumentFragment.MVDictionaryFieldView(context, df)
+        FieldType.Text,
+        FieldType.Integer,
+        FieldType.Decimal,
+        FieldType.LongText,
+        FieldType.Dictionary,
+        FieldType.MVDictionary -> DocumentFragment.FieldView(context, df.type,df.title,"${df.value}")
+        FieldType.Date -> DocumentFragment.DateFieldView(
+            context,
+            df,
+            if(df.value == null) "" else ShortDate.format(context,df.value as Date))
         else ->
             throw ClassNotFoundException("Field of type ${df.type} not found")
     }
-

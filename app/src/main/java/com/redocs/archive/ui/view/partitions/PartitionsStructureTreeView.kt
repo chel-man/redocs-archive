@@ -2,6 +2,7 @@ package com.redocs.archive.ui.view.partitions
 
 import android.content.Context
 import android.graphics.Color
+import android.util.Log
 import android.view.*
 import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
@@ -16,14 +17,14 @@ import com.redocs.archive.data.partitions.PartitionsStructureRepository
 import com.redocs.archive.domain.TreeNode
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.framework.EventBusSubscriber
-import com.redocs.archive.ui.ContextActionModeController
 import com.redocs.archive.ui.ContextActionSource
+import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.SelectPartitionNodeRequestEvent
 import com.redocs.archive.ui.setItemEnabled
 import com.redocs.archive.ui.utils.convertDpToPixel
 import com.redocs.archive.ui.view.tree.TreeView
-import com.redocs.archive.ui.view.tree.TreeViewViewModel
 import com.redocs.archive.ui.view.tree.TreeViewNode
+import com.redocs.archive.ui.view.tree.TreeViewViewModel
 import kotlinx.coroutines.CoroutineScope
 
 class PartitionsStructureTreeView(
@@ -34,7 +35,6 @@ class PartitionsStructureTreeView(
 ): TreeView<PartitionStructureTreeViewNode>(context, vm), ContextActionSource, EventBusSubscriber {
     override val lockContent = true
 
-    var contextActionModeController: ContextActionModeController? = null
     var nodeActionListener: ((id: Long, action: Action)->Unit)? = null
 
     private val contextMenuIdRes: Int = R.menu.partitions_context_menu
@@ -50,8 +50,9 @@ class PartitionsStructureTreeView(
         controller?.repo = repository
         controller = null
         longClickListener = {
-            if(allowContextActionMode())
-                contextActionModeController?.startActionMode(this)
+            if(selected?.id != -1L)
+                EventBus.publish(ContextActionRequestEvent(this))
+
             true
         }
     }
@@ -97,7 +98,7 @@ class PartitionsStructureTreeView(
         }
     }
 
-    override suspend fun onEvent(evt: EventBus.Event<*>) {
+    override fun onEvent(evt: EventBus.Event<*>) {
         when(evt){
             is SelectPartitionNodeRequestEvent -> { select(evt.data as Long)}
         }
@@ -126,10 +127,6 @@ class PartitionsStructureTreeView(
     override fun onContextMenuItemClick(mode: ActionMode, item: MenuItem?): Boolean {
         mode.finish()
         return true
-    }
-
-    override fun allowContextActionMode(): Boolean {
-        return selected?.id != -1L
     }
 
     private fun configureContextActionMenu(menu: Menu) {
@@ -179,7 +176,7 @@ class PartitionsStructureTreeView(
 interface PartitionStructureTreeViewNode : TreeViewNode
 
 class PartitionStructureViewModel : TreeViewViewModel() {
-    var repository: PartitionsStructureRepository? = null
+    //var repository: PartitionsStructureRepository? = null
 }
 
 enum class Action {

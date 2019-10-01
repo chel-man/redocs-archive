@@ -13,13 +13,28 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.*
 import com.google.android.material.navigation.NavigationView
 import com.redocs.archive.R
+import com.redocs.archive.framework.EventBus
+import com.redocs.archive.framework.EventBusSubscriber
+import com.redocs.archive.framework.subscribe
+import com.redocs.archive.ui.events.ContextActionRequestEvent
+import com.redocs.archive.ui.events.ContextActionStoppedEvent
 
-class MainActivity : AppCompatActivity(), ContextActionModeController {
+class MainActivity : AppCompatActivity(), EventBusSubscriber {
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navController: NavController
     private lateinit var sideNavView: NavigationView
     private lateinit var appBarConfiguration : AppBarConfiguration
+
+    init {
+        subscribe(ContextActionRequestEvent::class.java)
+    }
+
+    override fun onEvent(evt: EventBus.Event<*>) {
+        when(evt){
+            is ContextActionRequestEvent -> startActionMode(evt.data)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -115,7 +130,7 @@ class MainActivity : AppCompatActivity(), ContextActionModeController {
         field = value
     }
 
-    override fun startActionMode(source: ContextActionSource) {
+    private fun startActionMode(source: ContextActionSource) {
 
         isNavMenuLocked = true
 
@@ -139,6 +154,7 @@ class MainActivity : AppCompatActivity(), ContextActionModeController {
                 override fun onDestroyActionMode(mode: ActionMode) {
                     isNavMenuLocked = false
                     source.onDestroyContextAction()
+                    EventBus.publish(ContextActionStoppedEvent(source))
                 }
             })
     }
@@ -154,9 +170,9 @@ class MainActivity : AppCompatActivity(), ContextActionModeController {
     }
 }
 
-interface ContextActionModeController {
+/*interface ContextActionModeController {
     fun startActionMode(source: ContextActionSource)
-}
+}*/
 
 interface BackButtonInterceptor {
     fun onBackPressed(): Boolean

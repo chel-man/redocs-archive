@@ -22,6 +22,7 @@
 
     <string name="structure_tab_title">Structure</string>
     <string name="documents_tab_title">Documents</string>
+    <string name="documents_tab_document">Document</string>
     <string name="files_tab_title">Files</string>
 
     <string name="action_add">Add child</string>

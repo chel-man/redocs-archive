@@ -3,11 +3,11 @@ package com.redocs.archive.ui.view.list
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.os.Handler
 import android.os.Parcelable
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -26,7 +26,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.redocs.archive.R
 import kotlinx.coroutines.*
-import java.lang.IndexOutOfBoundsException
 import java.util.concurrent.Executor
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
@@ -56,8 +55,10 @@ open class ListView<T: ListRow>(
 
     var dataSource: ListDataSource<T> = EmptyDataSource as ListDataSource<T>
         set(value){
+            //Log.d("#LV","DS IS SETTED UP $value")
+
             value.scope = vm.coroScope
-            this.ds = value
+            //this.ds = value
             field = value
         }
 
@@ -68,20 +69,21 @@ open class ListView<T: ListRow>(
     }
 
     private var controller: ListController<T>
-    private lateinit var ds: ListDataSource<T>
+    //private lateinit var ds: ListDataSource<T>
 
     private var screenRows: Int = 0
 
     init {
 
-
+        //Log.d("#LISTVIEW","init entered")
         layoutManager = LinearLayoutManager(context)
         this.adapter = adapter
 
         controller = vm.controller as ListController<T>? ?: createController(vm.coroScope)
 
-        val tvo = this.viewTreeObserver
+        /*val tvo = this.viewTreeObserver
         if (tvo.isAlive) {
+            //Log.d("#LISTVIEW","init viewTreeObserver alive")
             tvo.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
                 override fun onGlobalLayout() {
                     val tvo = this@ListView.viewTreeObserver
@@ -91,16 +93,32 @@ open class ListView<T: ListRow>(
                             com.redocs.archive.ui.utils.spToPx(
                                 (adapter as ListAdapter<T>).textSize,
                                 context)
+                    //Log.d("#LISTVIEW","init screen rows: $screenRows")
                     if(vm.liveList?.value != null)
                         initAdapter(adapter,vm)
                 }
             })
+        }*/
+
+        Handler().post{
+            screenRows = this@ListView.height /
+                    com.redocs.archive.ui.utils.spToPx(
+                        (adapter as ListAdapter<T>).textSize,
+                        context)
+            //Log.d("#LISTVIEW","init screen rows: $screenRows")
+            if(vm.liveList?.value != null)
+                initAdapter(adapter,vm)
+
         }
 
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        saveState()
+    }
+
+    protected fun saveState(){
         vm.state = layoutManager?.onSaveInstanceState()
     }
 
@@ -114,9 +132,10 @@ open class ListView<T: ListRow>(
     protected fun createController(scope: CoroutineScope) =
         EmptyListController(scope) as ListController<T>
 
-    private fun createList(ds: ListDataSource<T>): PagedList<T> {
-        val pageSize = screenRows*2
-        val prefetch = screenRows/2
+    private fun createList(ds: ListDataSource<T>, itemRows: Int): PagedList<T> {
+        val itemsOnScreen = screenRows/itemRows
+        val pageSize = itemsOnScreen*2
+        val prefetch = itemsOnScreen/2
         val maxSize = 3*pageSize
 
         return PagedList(
@@ -125,7 +144,7 @@ open class ListView<T: ListRow>(
                 .setEnablePlaceholders(false)
                 .setPageSize(pageSize)
                 .setMaxSize(maxSize)
-                .setInitialLoadSizeHint(screenRows)
+                .setInitialLoadSizeHint(itemsOnScreen)
                 .setPrefetchDistance(prefetch)
                 .build(),
             Executor {
@@ -137,10 +156,12 @@ open class ListView<T: ListRow>(
     }
 
     fun reload(){
+        //Log.d("#LV","RELOAD")
         initAdapter(adapter as ListAdapter<T>,vm)
     }
 
     fun refresh(){
+        //Log.d("#LV","REFRESH")
         clearViewModel(vm)
         initAdapter(adapter as ListAdapter<T>,vm)
     }
@@ -205,14 +226,17 @@ open class ListView<T: ListRow>(
             vm.liveList = liveList
             var list = liveList.value
             if(list == null)
-                list = createList(ds)
+                list = createList(dataSource,columnCount)
 
             ld.value = list as PagedList<T>
             liveList.value = list
         }
 
-        if(vm.state != null)
+        if(vm.state != null) {
             layoutManager?.onRestoreInstanceState(vm.state)
+            //Log.d("#LV","STATE RESTORED")
+        }
+        //Log.d("#LV","ADAPTER INITIALIZED")
 
     }
 
@@ -244,7 +268,7 @@ open class ListView<T: ListRow>(
     }
 
     abstract class ListAdapter<T: ListRow>(
-        private val context: Context
+        protected val context: Context
     ) : PagedListAdapter<T, RecyclerView.ViewHolder>(
         object: DiffUtil.ItemCallback<T>(){
             override fun areItemsTheSame(oldItem: T, newItem: T): Boolean {
@@ -280,10 +304,9 @@ open class ListView<T: ListRow>(
 
         val selectedIds = mutableListOf<Long>()
         var ld: MutableLiveData<PagedList<T>> = MutableLiveData()
+        abstract val columnCount: Int
 
-        protected abstract val columnCount: Int
         protected abstract val columnNames: Array<String>
-
         protected abstract fun getValueAt(item: T, column: Int): String
 
         private val createdViews = mutableSetOf<ListRowView>()
@@ -291,7 +314,7 @@ open class ListView<T: ListRow>(
         private var isShowCheckBoxes: Boolean = false
             set(value){
                 if(value != field) {
-                    //Log.d("#AD","Showing checkboxes: $value cnt:${createdViews.size}")
+                    ////Log.d("#AD","Showing checkboxes: $value cnt:${createdViews.size}")
                     for (v in createdViews) {
                         with(v.checkBox) {
                             visibility = if (value) View.VISIBLE else View.GONE
@@ -303,7 +326,7 @@ open class ListView<T: ListRow>(
                                 cv.visibility = if (!value) View.VISIBLE else View.GONE
                         }
                     }
-                    //Log.d("#AD","Showing checkboxes: END")
+                    ////Log.d("#AD","Showing checkboxes: END")
                     field = value
                 }
             }
@@ -330,7 +353,7 @@ open class ListView<T: ListRow>(
                         return@withContext -1
                     }
                     try {
-                        Log.d("#AD", "=> $pos / $count / ${list.positionOffset}")
+                        //Log.d("#AD", "=> $pos / $count / ${list.positionOffset}")
                         list.loadAround(pos)
                         if(loadingPage){
                             loadingPage = false
@@ -373,7 +396,7 @@ open class ListView<T: ListRow>(
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = getItem(position) as T
             val itemId = item.id
-            //Log.d("#AD","${item.id} / $position $selectedId")
+            ////Log.d("#AD","${item.id} / $position $selectedId")
             (holder.itemView as ListRowView).apply {
                 var i = 0
                 for(tv in columnViews)
@@ -391,6 +414,7 @@ open class ListView<T: ListRow>(
                     isActivated = selectedIds.contains(item.id)
 
                 val view = this
+                var clickProcessing =false
 
                 with(checkBox){
                     visibility = if(isShowCheckBoxes) View.VISIBLE else GONE
@@ -399,19 +423,22 @@ open class ListView<T: ListRow>(
                     setOnCheckedChangeListener { buttonView, isChecked ->
                         if(isChecked) {
                             selectedIds += itemId
-                            //Log.d("#VIEW","SELECTED ${selectedPositions.joinToString ("\n")}")
+                            ////Log.d("#VIEW","SELECTED ${selectedPositions.joinToString ("\n")}")
                         }
                         else {
                             selectedIds -= itemId
-                            //Log.d("#VIEW", "UNSELECTED ${selectedPositions.joinToString("\n")}")
+                            ////Log.d("#VIEW", "UNSELECTED ${selectedPositions.joinToString("\n")}")
                         }
-                        selectItem(item,view,isChecked)
+                        if(!clickProcessing)
+                            selectItem(item, view, isChecked)
                     }
                 }
 
                 setClickListener {
                     if(!isContextAction) {
+                        clickProcessing = true
                         selectItem(item, this, true)
+                        clickProcessing = false
                         selectedId = item.id
                     }
                 }
@@ -421,7 +448,9 @@ open class ListView<T: ListRow>(
                         false
                     else{
                         //if (selectedId != position)
-                            selectItem(item, this, true)
+                        clickProcessing = true
+                        selectItem(item, this, true)
+                        clickProcessing = false
                         val l = longClickListener
                         if (l != null)
                             l(item)
@@ -433,8 +462,9 @@ open class ListView<T: ListRow>(
                 for(cv in controlViews){
                     cv.visibility = if(selectionMode == SelectionMode.Single && isContextAction) GONE else View.VISIBLE
                     cv.setOnClickListener {
-                        if(!isContextAction)
-                            controlClickListener?.invoke(item,cv)
+                        if(!isContextAction) {
+                            controlClickListener?.invoke(item, cv)
+                        }
                     }
                 }
             }
@@ -613,7 +643,7 @@ open class ListView<T: ListRow>(
                     }
                     labels[i]?.setTextColor(fc)
                 }
-                //Log.d("#NodeView","${textView.text} active: $activated")
+                ////Log.d("#NodeView","${textView.text} active: $activated")
             }
 
         }
@@ -651,7 +681,7 @@ open class ListView<T: ListRow>(
                 val wc = waitCont
                 var l: List<T> = emptyList()
                 try {
-                    //Log.d("#DataSource","$start : $size")
+                    ////Log.d("#DataSource","$start : $size")
                     l = loadData(start, size)
                     wc?.apply {
                         waitCont = null

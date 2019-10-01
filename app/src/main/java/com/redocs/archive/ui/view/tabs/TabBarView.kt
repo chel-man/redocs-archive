@@ -12,8 +12,6 @@ import androidx.fragment.app.FragmentPagerAdapter
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
 import com.redocs.archive.R
-import com.redocs.archive.ui.ContextActionModeController
-import com.redocs.archive.ui.ContextActionBridge
 
 
 class TabBarView(
@@ -137,9 +135,7 @@ class TabBarView(
     class Tab(
         val title: Int,
         createFragment: () -> Fragment,
-        setupFragment: (Fragment) -> Unit,
-        //action: (Boolean)->Unit
-        ac: ContextActionModeController?
+        setupFragment: (Fragment) -> Unit
     ){
         lateinit var fragment: Fragment
 
@@ -158,10 +154,6 @@ class TabBarView(
                 fragment.actionListener = action
             }*/
             setupFragment(fragment)
-            //Log.d("#TAB","SETUP $fragment")
-            if(ac !=null)
-                (fragment as ContextActionBridge).contextActionModeController = ac
-            ////Log.d("#TAB","FRAGMENT CONFIGURED $title")
             this.fragment = fragment
         }
     }
@@ -202,16 +194,12 @@ class TabBarViewBuilder(private val parent: Fragment) {
             return TabBarView.Tab(
                 title as Int,
                 fragmentBuilder.create,
-                fragmentBuilder.setup,
-                //fragmentBuilder.action
-                fragmentBuilder.contextActionModeController)
+                fragmentBuilder.setup)
         }
     }
 
     class FragmentBuilder(private val tb: TabBuilder) {
 
-        var contextActionModeController: ContextActionModeController? = null
-        //var action: (Boolean) -> Unit = {}
         var setup: (Fragment) -> Unit = {}
         lateinit var create: () -> Fragment
 

@@ -15,10 +15,13 @@ class InMemoryDocumentsDataSource : DataSource {
         for(i in 1..200L)
             data += Document(i,"Document $i",
                 listOf(
-                    Document.Field(1,"Text",FieldType.Text,"Text value"),
-                    Document.Field(2,"Integer long title",FieldType.Integer,12547),
+                    Document.Field(1,"Text",FieldType.Text,
+                        "Text value Text value Text value Text value Text value Text value"),
                     Document.Field(3,"long Text",FieldType.LongText,
-                        "Text value Text value Text value Text value Text value")
+                        "Text value Text value Text value Text value Text value Text value Text value Text value Text value"),
+                    Document.Field(2,"Integer long title",FieldType.Integer,12547),
+                    Document.Field(4,"Decimal",FieldType.Decimal,365.457),
+                    Document.Field(5,"Date",FieldType.Date,Date())
                 ),
                 Date(), Date())
     }

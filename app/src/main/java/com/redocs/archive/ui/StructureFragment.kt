@@ -10,7 +10,7 @@ import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import com.redocs.archive.data.partitions.PartitionsStructureDataSource
+import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.data.partitions.PartitionsStructureRepository
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.ui.events.ActivateDocumentListEvent
@@ -20,21 +20,15 @@ import com.redocs.archive.ui.view.partitions.PartitionStructureTreeViewNode
 import com.redocs.archive.ui.view.partitions.PartitionStructureViewModel
 import com.redocs.archive.ui.view.partitions.PartitionsStructureTreeView
 
-class StructureFragment() : Fragment(),  ContextActionBridge {
-
-    override var contextActionModeController: ContextActionModeController = ContextActionModeControllerStub()
-        set(value){
-            tree?.contextActionModeController = value
-            field = value
-        }
+class StructureFragment() : Fragment() {
 
     private var tree: PartitionsStructureTreeView? = null
-    private var repo: PartitionsStructureRepository? = null
+    //private var repo: PartitionsStructureRepository? = null
     private val vm by activityViewModels<PartitionStructureViewModel>()
 
-    constructor(dataSource: PartitionsStructureDataSource):this(){
+    /*constructor(dataSource: PartitionsStructureDataSource):this(){
         repo=PartitionsStructureRepository(dataSource)
-    }
+    }*/
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -42,10 +36,11 @@ class StructureFragment() : Fragment(),  ContextActionBridge {
         savedInstanceState: Bundle?
     ): View? {
 
-        val repo = repo ?: vm.repository as PartitionsStructureRepository
-        vm.repository=repo
+        val repo = PartitionsStructureRepository(
+            ArchiveApplication.partitionsStructureDataSource)
+            //repo ?: vm.repository as PartitionsStructureRepository
+        //vm.repository=repo
         tree = PartitionsStructureTreeView(context as Context, vm, repo).apply {
-                contextActionModeController = this@StructureFragment.contextActionModeController
                 addSelectionListener {
                     itemSelected(it)
                 }
@@ -56,6 +51,7 @@ class StructureFragment() : Fragment(),  ContextActionBridge {
                 }
             }
 
+        //Log.d("#STRUCTURE","CREATED")
         return object:LinearLayoutCompat(context) {
             override fun generateDefaultLayoutParams(): LayoutParams? =
                 LayoutParams(

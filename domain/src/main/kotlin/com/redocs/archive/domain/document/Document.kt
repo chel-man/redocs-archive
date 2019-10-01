@@ -7,7 +7,7 @@ data class Document (
     val name: String,
     val fields: Collection<Field> = emptyList(),
     val created: Date,
-    val lastUpdated: Date){
+    val updated: Date){
 
     data class Field(
         val id: Long,

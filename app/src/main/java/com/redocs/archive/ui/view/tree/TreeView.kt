@@ -90,8 +90,6 @@ abstract class TreeView<T : TreeViewNode>(
             return false
     }
 
-    protected open fun allowContextActionMode(): Boolean = false
-
     private fun onSelectionChanged(node: T?) {
         for (l in selectionListeners)
             l(node)
