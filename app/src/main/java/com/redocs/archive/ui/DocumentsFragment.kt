@@ -131,10 +131,10 @@ private class DocumentListView(
                 var doc = null
                 if(item != null)
                     vm.coroScope.launch {
-                        EventBus.publish(DocumentSelectedEvent(repo.get(item.id)))
+                        EventBus.publish(DocumentSelectedEvent(item.id))
                     }
                 else
-                    EventBus.publish(DocumentSelectedEvent(null))
+                    EventBus.publish(DocumentSelectedEvent())
             }
         }
 
@@ -156,7 +156,7 @@ private class DocumentListView(
             this.data += data
         }
         refresh()
-        EventBus.publish(DocumentSelectedEvent(null))
+        EventBus.publish(DocumentSelectedEvent())
     }
 
     fun refresh(id: Long) {
@@ -166,7 +166,7 @@ private class DocumentListView(
                 clear()
                 parentId = id
                 refresh()
-                EventBus.publish(DocumentSelectedEvent(null))
+                EventBus.publish(DocumentSelectedEvent())
             }
             else
                 reload()
@@ -210,9 +210,7 @@ private class DocumentListView(
             controlClickListener = { item, src ->
                 scope.launch {
                     EventBus.publish(
-                        DocumentSelectedEvent(
-                            repo.get(item.id)
-                        )
+                        DocumentSelectedEvent(item.id)
                     )
                     EventBus.publish(ShowDocumentEvent())
                 }
