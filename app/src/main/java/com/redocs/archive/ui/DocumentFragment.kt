@@ -19,10 +19,13 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.children
 import androidx.core.view.setMargins
 import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.redocs.archive.ArchiveApplication
@@ -39,17 +42,16 @@ import com.redocs.archive.ui.utils.ShortDate
 import com.redocs.archive.ui.utils.convertDpToPixel
 import com.redocs.archive.ui.view.ActivablePanel
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.lang.Math.abs
 import java.util.*
-
-private lateinit var scope: CoroutineScope
 
 class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
     override var isActive = false
 
+    private lateinit var documentView: DocumentView
+    private var firstActivate = true
     private val vm by activityViewModels<DocumentViewModel>()
     private val filesRepo = Repository(ArchiveApplication.filesDataSource)
     private val docsRepo = com.redocs.archive.data.documents.Repository(
@@ -65,46 +67,65 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
         }
     }
 
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
-        scope = vm.coroScope
-    }
-
     override fun activate() {
-        var doc = vm.document
-        if(doc?.id != vm.documentId) {
-            if (vm.documentId == Long.MIN_VALUE)
-                return
-            doc = DocumentStub(-vm.documentId)
-            createView(doc)
+
+        var doc = vm.document.value as DocumentModel?
+
+        if(firstActivate) {
+            if (vm.documentId != Long.MIN_VALUE) {
+                if(doc?.id != vm.documentId)
+                    startLoadDocument()
+                else
+                    createView(getController(),doc)
+            }
         }
+        else {
+            when {
+                vm.documentId == Long.MIN_VALUE ->
+                    (view as ViewGroup).removeViewAt(0)
+                doc?.id != vm.documentId ->
+                    startLoadDocument()
+                else ->
+                    createView(getController(),doc)
+            }
+        }
+        firstActivate = false
     }
 
     override fun deactivate() {}
 
-    private fun DocumentStub(id: Long) =
-        Document(id,"",filesCount = 0, created = Date(), updated = Date())
+    private fun getController() =
+        (vm.controller ?: Controller(
+            vm,
+            docsRepo,
+            filesRepo)) as Controller
 
-    private inline fun Document.isStub() = id<0
+    private fun startLoadDocument() {
+        vm.document.value = DocumentModel(-vm.documentId, "")
+        val controller = getController()
+        vm.controller = controller
+        controller.load()
+        startObservingModel(controller)
+    }
 
-    private fun createView(document: Document) {
+    private fun startObservingModel(controller: Controller){
+        vm.document.observe(this,androidx.lifecycle.Observer {
+            it as DocumentModel
+            if(it.isStub)
+                createView(controller,it)
+            else
+                documentView.update(it)
+        })
+    }
+
+    private fun createView(controller: Controller,dm: DocumentModel) {
 
         with(view as ViewGroup) {
             try {
-                removeViewAt(0)
+                removeView(documentView)
             }catch (npe: NullPointerException){}
-            val docView = DocumentView(context, filesRepo, document)
-            addView(docView)
-            if(document.isStub()){
-                scope.launch {
-                    val  doc = docsRepo.get(-document.id)
-                    vm.document = doc
-                    withContext(Dispatchers.Main){
-                        docView.updateFields(doc.fields)
-                        docView.updateFiles(doc.filesCount)
-                    }
-                }
-            }
+            documentView = DocumentView(context,controller,dm)
+            addView(documentView)
         }
     }
 
@@ -113,15 +134,13 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? =
-        ScrollView(context)
-        /*LinearLayoutCompat(context)*/.apply {
+        ScrollView(context).apply {
             layoutParams = LinearLayoutCompat.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             ).apply {
                 setMargins(15)
             }
-
         }
 
 
@@ -131,8 +150,7 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
         title: String,
         value: String?
 
-    ) : TableRow(context)
-    {
+    ) : TableRow(context) {
 
         init {
 
@@ -174,21 +192,25 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
     internal class DateFieldView(
         context: Context?,
-        df: Document.Field,
+        title: String,
         value: String
     ) : FieldView(
         context as Context,
         FieldType.Date,
-        df.title,
+        title,
         value
     )
 
     private class DocumentView(
         context: Context,
-        repo: Repository,
-        doc: Document?
-    ) : LinearLayoutCompat(context)
-    {
+        private val controller: Controller,
+        private var dm: DocumentModel
+
+    ) : LinearLayoutCompat(context) {
+
+        private var fileListView: FileListView
+        private var fieldlistView: FieldListView
+
         init{
             layoutParams = LinearLayoutCompat.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -197,21 +219,52 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
                 setMargins(15)
             }
             orientation = VERTICAL
+            fieldlistView = addFieldListView(dm.fields)
+            fileListView = addFilesListView(controller,dm.files,dm.filesCount)
+        }
 
-            if(doc != null) {
-                addView(
-                    FieldListView(context, doc.fields))
-                addView(
-                    FileListView(
-                        context, doc.id, repo, doc.filesCount))
+        private fun addFieldListView(fields: Collection<FieldModel>, index: Int = -1): FieldListView {
+            fieldlistView = FieldListView(context, fields)
+            if(index < 0)
+                addView(fieldlistView)
+            else
+                addView(fieldlistView,index)
+            return fieldlistView
+        }
+
+        private fun addFilesListView(
+                controller: Controller,
+                files: Collection<FileModel>,
+                count: Int,
+                index: Int = -1
+        ): FileListView {
+
+            fileListView = FileListView(context, controller,files, count)
+            if(index < 0)
+                addView(fileListView)
+            else
+                addView(fileListView, index)
+            return fileListView
+        }
+
+        fun update(model: DocumentModel) {
+            if(model.fields != dm.fields) {
+                val i = children.indexOf(fieldlistView)
+                removeView(fieldlistView)
+                addFieldListView(model.fields,i)
+            }
+            if(model.files != dm.files) {
+                val i = children.indexOf(fieldlistView)
+                removeView(fileListView)
+                addFilesListView(controller,model.files,model.filesCount,i)
             }
         }
     }
 
     private class FileListView(
         context: Context,
-        documentId: Long,
-        repo: Repository,
+        controller: Controller,
+        files: Collection<FileModel>,
         filesCount: Int
     ) : CardView(
         context
@@ -283,10 +336,40 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
                                         resources.getString(R.string.action_view)
                                     )
                                     setOnClickListener {
-                                        loadList(context, parent, it as ImageButton,repo, documentId)
+                                        loadList(
+                                            context,
+                                            parent,
+                                            it as ImageButton,
+                                            controller)
                                     }
                                 }
                             )
+
+                            val tl = TableLayout(context).apply {
+                                setColumnStretchable(1,true)
+                                showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE or
+                                        LinearLayout.SHOW_DIVIDER_BEGINNING or
+                                        LinearLayout.SHOW_DIVIDER_END
+                                //dividerDrawable =
+                            }
+
+                            tl.addView(FileListHeader(context))
+
+                            var colored = false
+
+                            for(r in files) {
+                                tl.addView(
+                                    r.toView(context).apply {
+                                        setBackgroundColor(if(colored) Color.LTGRAY else Color.TRANSPARENT)
+                                    })
+                                colored = !colored
+                            }
+
+                            with(parent){
+                                removeViewAt(0)
+                                addView(tl)
+                            }
+
                         }
                     )
                 }
@@ -295,9 +378,14 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
         private var closed = true
 
-        private fun loadList(context: Context, vg: ViewGroup, button: ImageButton, repo: Repository, id: Long){
+        private fun loadList(
+            context: Context,
+            vg: ViewGroup,
+            button: ImageButton,
+            controller: Controller
+        ){
             if(closed){
-                createFileListTable(context,vg,button,repo, id)
+                createFileListTable(context,vg,button,controller)
             }
             else{
                 vg.removeViewAt(1)
@@ -310,8 +398,7 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
             context: Context,
             container: ViewGroup,
             button: ImageButton,
-            repo: Repository,
-            id: Long
+            controller: Controller
         ){
 
             val pb = ProgressBar(context).apply {
@@ -319,35 +406,7 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
             }
             container.addView(pb)
             button.isEnabled = false
-            scope.launch {
-                val files = withContext(Dispatchers.IO){
-                    repo.list(id).map { it.toView(context) }
-                }
-
-                withContext(Dispatchers.Main){
-                    val tl = TableLayout(context).apply {
-                        setColumnStretchable(1,true)
-                        showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE or
-                                LinearLayout.SHOW_DIVIDER_BEGINNING or
-                                LinearLayout.SHOW_DIVIDER_END
-                        //dividerDrawable =
-                    }
-                    tl.addView(FileListHeader(context))
-                    var colored = false
-                    for(r in files) {
-                        tl.addView(
-                            r.apply {
-                                setBackgroundColor(if(colored) Color.LTGRAY else Color.TRANSPARENT)
-                            })
-                        colored = !colored
-                    }
-                    with(container){
-                        removeView(pb)
-                        addView(tl)
-                    }
-                    button.isEnabled = true
-                }
-            }
+            controller.loadFiles()
         }
 
         private class FileListHeader(
@@ -405,14 +464,14 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
             }
         }
 
-        private inline fun File.toView(context: Context) = FileView(context,id,name,size)
+        private inline fun FileModel.toView(context: Context) = FileView(context,id,name,size)
     }
 
 
 
     private class FieldListView(
         context: Context,
-        fields: Collection<Document.Field>
+        fields: Collection<FieldModel>
     ) : CardView(
         context
     ) {
@@ -440,13 +499,76 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
         fun allowClose() = true
 
-        private fun createViews(context: Context, fields: Collection<Document.Field>): Collection<DocumentFragment.FieldView> {
+        private fun createViews(context: Context, fields: Collection<FieldModel>): Collection<DocumentFragment.FieldView> {
             val l = mutableListOf<DocumentFragment.FieldView>()
-            for(df in fields)
-                l += createFieldView(context,df)
+            for(fm in fields)
+                l += createFieldView(context,fm)
             return l
         }
 
+    }
+}
+
+interface DocumentModelInterface
+
+private data class DocumentModel(
+    val id: Long,
+    val name: String,
+    val filesCount: Int = 0,
+    val fields: Collection<FieldModel> = emptyList(),
+    val files: Collection<FileModel> = emptyList()
+) : DocumentModelInterface {
+
+    val isStub: Boolean get() = id < 0
+}
+
+private data class FieldModel(
+    val id: Long,
+    val title: String,
+    val type: FieldType,
+    val value: Any?,
+    val newValue: Any?
+)
+
+private data class FileModel(
+    val id: Long,
+    val name: String,
+    val size: Long
+)
+
+private inline fun Document.Field.toModel() =
+    FieldModel(id,title,type,value,value)
+
+private inline fun Document.toModel() =
+    DocumentModel(id,name,filesCount,fields.map { it.toModel() })
+
+private inline fun File.toModel() =
+    FileModel(id,name,size)
+
+interface DocumentControllerInterface
+
+private class Controller(
+    private val vm: DocumentViewModel,
+    private val documentRepository: com.redocs.archive.data.documents.Repository,
+    private val filesRepository: Repository
+
+) : DocumentControllerInterface {
+
+    private val scope = vm.coroScope
+
+    fun load() {
+        scope.launch {
+            val id = abs((vm.document.value as DocumentModel).id)
+            vm.document.value = documentRepository.get(id).toModel()
+        }
+    }
+
+    fun loadFiles() {
+        scope.launch {
+            val d = vm.document.value as DocumentModel
+            val files = filesRepository.list(d.id).map{ it.toModel()}
+            vm.document.value = d.copy(files = files)
+        }
     }
 }
 
@@ -454,22 +576,23 @@ class DocumentViewModel : ViewModel() {
 
     var documentId: Long = Long.MIN_VALUE
     val coroScope= viewModelScope
-    var document: Document? = null
+    var document = MutableLiveData<DocumentModelInterface?>()
+    var controller: DocumentControllerInterface? = null
     var topField = 0
 }
 
-private fun createFieldView(context: Context,df: Document.Field): DocumentFragment.FieldView =
-    when(df.type){
+private fun createFieldView(context: Context, fm: FieldModel): DocumentFragment.FieldView =
+    when(fm.type){
         FieldType.Text,
         FieldType.Integer,
         FieldType.Decimal,
         FieldType.LongText,
         FieldType.Dictionary,
-        FieldType.MVDictionary -> DocumentFragment.FieldView(context, df.type,df.title,"${df.value}")
+        FieldType.MVDictionary -> DocumentFragment.FieldView(context, fm.type,fm.title,"${fm.value}")
         FieldType.Date -> DocumentFragment.DateFieldView(
             context,
-            df,
-            if(df.value == null) "" else ShortDate.format(context,df.value as Date))
+            fm.title,
+            if(fm.value == null) "" else ShortDate.format(context,fm.value as Date))
         else ->
-            throw ClassNotFoundException("Field of type ${df.type} not found")
+            throw ClassNotFoundException("Field of type ${fm.type} not found")
     }
