@@ -6,6 +6,7 @@ data class Document (
     val id: Long,
     val name: String,
     val fields: Collection<Field> = emptyList(),
+    val filesCount: Int,
     val created: Date,
     val updated: Date){
 

@@ -29,4 +29,8 @@
     <string name="action_add_next">Add Next</string>
     <string name="action_delete">Delete</string>
     <string name="action_view">View</string>
+
+    <string name="file_id_title">ID</string>
+    <string name="file_name_title">Name</string>
+    <string name="file_size_title">Size</string>
 </resources>

@@ -140,7 +140,7 @@ class HomeFragment : Fragment(), EventBusSubscriber {
 
         with(getRootLayout()){
             val fv = getChildAt(0)
-            if(fv is DocumentFragment.DocumentView) {
+            if(fv is DocumentFragment.FieldListView) {
                 if(fv.allowClose()) {
                     removeView(fv)
                     /*if(restored) {

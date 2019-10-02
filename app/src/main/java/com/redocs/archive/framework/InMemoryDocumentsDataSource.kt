@@ -23,7 +23,7 @@ class InMemoryDocumentsDataSource : DataSource {
                     Document.Field(4,"Decimal",FieldType.Decimal,365.457),
                     Document.Field(5,"Date",FieldType.Date,Date())
                 ),
-                Date(), Date())
+                5,Date(), Date())
     }
 
     override suspend fun get(id: Long): Document = data[0]
