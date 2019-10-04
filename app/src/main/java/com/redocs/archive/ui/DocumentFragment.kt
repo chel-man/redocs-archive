@@ -1,17 +1,19 @@
 package com.redocs.archive.ui
 
+import android.app.Dialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.view.Gravity
+import android.util.Log
+import android.view.*
 import android.view.Gravity.CENTER
 import android.view.Gravity.END
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.appcompat.widget.LinearLayoutCompat.HORIZONTAL
 import androidx.appcompat.widget.LinearLayoutCompat.VERTICAL
@@ -19,12 +21,11 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.ViewCompat
-import androidx.core.view.children
 import androidx.core.view.setMargins
 import androidx.core.view.setPadding
+import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -41,7 +42,6 @@ import com.redocs.archive.ui.events.DocumentSelectedEvent
 import com.redocs.archive.ui.utils.ShortDate
 import com.redocs.archive.ui.utils.convertDpToPixel
 import com.redocs.archive.ui.view.ActivablePanel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.lang.Math.abs
 import java.util.*
@@ -70,19 +70,20 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
     override fun activate() {
 
         var doc = vm.document.value as DocumentModel?
-
         if(firstActivate) {
             if (vm.documentId != Long.MIN_VALUE) {
                 if(doc?.id != vm.documentId)
                     startLoadDocument()
                 else
-                    createView(getController(),doc)
+                    createView(getController(), doc)
+                startObservingModel()
             }
         }
         else {
             when {
                 vm.documentId == Long.MIN_VALUE ->
                     (view as ViewGroup).removeViewAt(0)
+
                 doc?.id != vm.documentId ->
                     startLoadDocument()
                 else ->
@@ -94,25 +95,27 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
     override fun deactivate() {}
 
-    private fun getController() =
-        (vm.controller ?: Controller(
+    private fun getController(): Controller {
+        val ctr = vm.controller ?: Controller(
             vm,
             docsRepo,
-            filesRepo)) as Controller
+            filesRepo)
+        vm.controller = ctr
+        return ctr as Controller
+    }
 
     private fun startLoadDocument() {
         vm.document.value = DocumentModel(-vm.documentId, "")
-        val controller = getController()
-        vm.controller = controller
-        controller.load()
-        startObservingModel(controller)
+        getController().load()
     }
 
-    private fun startObservingModel(controller: Controller){
+    private fun startObservingModel(){
         vm.document.observe(this,androidx.lifecycle.Observer {
+            Log.d("#DF","model changed")
+            it as DocumentModel
             it as DocumentModel
             if(it.isStub)
-                createView(controller,it)
+                createView(getController(),it)
             else
                 documentView.update(it)
         })
@@ -123,8 +126,12 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
         with(view as ViewGroup) {
             try {
                 removeView(documentView)
-            }catch (npe: NullPointerException){}
+            }catch (npe: NullPointerException){
+
+            }catch (upa: UninitializedPropertyAccessException){}
+
             documentView = DocumentView(context,controller,dm)
+
             addView(documentView)
         }
     }
@@ -146,11 +153,14 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
     internal open class FieldView(
         context: Context,
+        private val position: Int,
         private val type: FieldType,
         title: String,
         value: String?
 
     ) : TableRow(context) {
+
+        var longClickListener : (Int)->Boolean = { false }
 
         init {
 
@@ -164,6 +174,9 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
                     layoutParams = generateDefaultLayoutParams().apply {
                         setMargins(0, 0, 10, 0)
                         weight = 1F
+                    }
+                    setOnLongClickListener {
+                        longClickListener(position)
                     }
                 })
 
@@ -192,10 +205,12 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
     internal class DateFieldView(
         context: Context?,
+        position: Int,
         title: String,
         value: String
     ) : FieldView(
         context as Context,
+        position,
         FieldType.Date,
         title,
         value
@@ -206,10 +221,9 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
         private val controller: Controller,
         private var dm: DocumentModel
 
-    ) : LinearLayoutCompat(context) {
+    ) : LinearLayoutCompat(context), ContextActionSource {
 
-        private var fileListView: FileListView
-        private var fieldlistView: FieldListView
+        override val lockContent = false
 
         init{
             layoutParams = LinearLayoutCompat.LayoutParams(
@@ -219,46 +233,61 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
                 setMargins(15)
             }
             orientation = VERTICAL
-            fieldlistView = addFieldListView(dm.fields)
-            fileListView = addFilesListView(controller,dm.files,dm.filesCount)
-        }
-
-        private fun addFieldListView(fields: Collection<FieldModel>, index: Int = -1): FieldListView {
-            fieldlistView = FieldListView(context, fields)
-            if(index < 0)
-                addView(fieldlistView)
-            else
-                addView(fieldlistView,index)
-            return fieldlistView
-        }
-
-        private fun addFilesListView(
-                controller: Controller,
-                files: Collection<FileModel>,
-                count: Int,
-                index: Int = -1
-        ): FileListView {
-
-            fileListView = FileListView(context, controller,files, count)
-            if(index < 0)
-                addView(fileListView)
-            else
-                addView(fileListView, index)
-            return fileListView
+            if(dm.isStub) {
+                addView(
+                    ProgressBar(context).apply {
+                        this.isIndeterminate = true
+                    })
+                addView(View(context))
+            }
+            else {
+                addView(
+                    FieldListView(context,dm.fields,::onFieldLongClick))
+                if(dm.filesCount == 0)
+                    addView(View(context))
+                else
+                    addView(
+                        FileListView(context,controller, dm.files, dm.filesCount))
+            }
         }
 
         fun update(model: DocumentModel) {
+
             if(model.fields != dm.fields) {
-                val i = children.indexOf(fieldlistView)
-                removeView(fieldlistView)
-                addFieldListView(model.fields,i)
+                removeViewAt(0)
+                addView(
+                    FieldListView(context,model.fields,::onFieldLongClick),0)
+
             }
-            if(model.files != dm.files) {
-                val i = children.indexOf(fieldlistView)
-                removeView(fileListView)
-                addFilesListView(controller,model.files,model.filesCount,i)
+            if(model.filesCount > 0) {
+                if(dm.isStub || dm.files != model.files) {
+                    removeViewAt(1)
+                    addView(
+                        FileListView(context, controller, model.files, model.filesCount), 1
+                    )
+                }
             }
+            dm = model
         }
+
+        private fun onFieldLongClick(position: Int): Boolean {
+            //EventBus.publish(ContextActionRequestEvent(this))
+            DocumentFieldEditorDialog(
+                Editor(context/*dm.fields[position]*/)
+            ).show((context as AppCompatActivity).supportFragmentManager,"Editor")
+            return true
+        }
+
+        override fun createContextActionMenu(inflater: MenuInflater, menu: Menu) {
+        }
+
+        override fun onDestroyContextAction() {
+        }
+
+        override fun onContextMenuItemClick(mode: ActionMode, item: MenuItem?): Boolean {
+            return true
+        }
+
     }
 
     private class FileListView(
@@ -288,6 +317,7 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
                         ViewGroup.LayoutParams.WRAP_CONTENT
                     )
                     orientation = VERTICAL
+
                     val parent = this
 
                     addView(
@@ -340,73 +370,57 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
                                             context,
                                             parent,
                                             it as ImageButton,
-                                            controller)
+                                            controller,
+                                            filesCount != files.size)
                                     }
                                 }
                             )
-
-                            val tl = TableLayout(context).apply {
-                                setColumnStretchable(1,true)
-                                showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE or
-                                        LinearLayout.SHOW_DIVIDER_BEGINNING or
-                                        LinearLayout.SHOW_DIVIDER_END
-                                //dividerDrawable =
-                            }
-
-                            tl.addView(FileListHeader(context))
-
-                            var colored = false
-
-                            for(r in files) {
-                                tl.addView(
-                                    r.toView(context).apply {
-                                        setBackgroundColor(if(colored) Color.LTGRAY else Color.TRANSPARENT)
-                                    })
-                                colored = !colored
-                            }
-
-                            with(parent){
-                                removeViewAt(0)
-                                addView(tl)
-                            }
-
                         }
                     )
+                    if(!files.isEmpty()) {
+                        val tl = TableLayout(context).apply {
+                            setColumnStretchable(1, true)
+                            showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE or
+                                    LinearLayout.SHOW_DIVIDER_BEGINNING or
+                                    LinearLayout.SHOW_DIVIDER_END
+                            //dividerDrawable =
+                        }
+
+                        tl.addView(FileListHeader(context))
+
+                        var colored = false
+
+                        for (r in files) {
+                            tl.addView(
+                                r.toView(context).apply {
+                                    setBackgroundColor(if (colored) Color.LTGRAY else Color.TRANSPARENT)
+                                })
+                            colored = !colored
+                        }
+                        addView(tl)
+                    }
                 }
             )
-        }
 
-        private var closed = true
+        }
 
         private fun loadList(
             context: Context,
-            vg: ViewGroup,
-            button: ImageButton,
-            controller: Controller
-        ){
-            if(closed){
-                createFileListTable(context,vg,button,controller)
-            }
-            else{
-                vg.removeViewAt(1)
-            }
-
-            closed = !closed
-        }
-
-        private fun createFileListTable(
-            context: Context,
             container: ViewGroup,
             button: ImageButton,
-            controller: Controller
+            controller: Controller,
+            closed: Boolean
         ){
-
-            val pb = ProgressBar(context).apply {
-                this.isIndeterminate = true
+            if(closed){
+                container.addView(
+                    ProgressBar(context).apply {
+                        this.isIndeterminate = true
+                    })
+                button.isEnabled = false
+                controller.showFiles()
             }
-            container.addView(pb)
-            button.isEnabled = false
-            controller.loadFiles()
+            else
+                controller.hideFiles()
         }
 
         private class FileListHeader(
@@ -471,7 +485,8 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
     private class FieldListView(
         context: Context,
-        fields: Collection<FieldModel>
+        fields: Collection<FieldModel>,
+        longClickListener: (Int)->Boolean
     ) : CardView(
         context
     ) {
@@ -492,8 +507,10 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
                 setColumnStretchable(1,true)
                 //setColumnShrinkable(1,true)
             }
-            for (fv in createViews(context, fields))
+            for (fv in createViews(context, fields)) {
+                fv.longClickListener = longClickListener
                 grid.addView(fv)
+            }
             addView(grid)
         }
 
@@ -501,8 +518,9 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
         private fun createViews(context: Context, fields: Collection<FieldModel>): Collection<DocumentFragment.FieldView> {
             val l = mutableListOf<DocumentFragment.FieldView>()
+            var i = 0
             for(fm in fields)
-                l += createFieldView(context,fm)
+                l += createFieldView(context,i++,fm)
             return l
         }
 
@@ -515,11 +533,19 @@ private data class DocumentModel(
     val id: Long,
     val name: String,
     val filesCount: Int = 0,
-    val fields: Collection<FieldModel> = emptyList(),
+    val fields: List<FieldModel> = emptyList(),
     val files: Collection<FileModel> = emptyList()
 ) : DocumentModelInterface {
 
     val isStub: Boolean get() = id < 0
+
+    val isDirty: Boolean get() {
+            for(f in fields){
+                if(f.isDirty)
+                    return true
+            }
+            return false
+        }
 }
 
 private data class FieldModel(
@@ -528,13 +554,46 @@ private data class FieldModel(
     val type: FieldType,
     val value: Any?,
     val newValue: Any?
-)
+){
+
+    val isDirty get() = value != newValue
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as FieldModel
+
+        if (id != other.id) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return id.hashCode()
+    }
+}
 
 private data class FileModel(
     val id: Long,
     val name: String,
     val size: Long
-)
+){
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as FileModel
+
+        if (id != other.id) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return id.hashCode()
+    }
+}
 
 private inline fun Document.Field.toModel() =
     FieldModel(id,title,type,value,value)
@@ -563,12 +622,17 @@ private class Controller(
         }
     }
 
-    fun loadFiles() {
+    fun showFiles() {
         scope.launch {
             val d = vm.document.value as DocumentModel
             val files = filesRepository.list(d.id).map{ it.toModel()}
             vm.document.value = d.copy(files = files)
         }
+    }
+
+    fun hideFiles() {
+        val d = vm.document.value as DocumentModel
+        vm.document.value = d.copy(files = emptyList())
     }
 }
 
@@ -581,16 +645,40 @@ class DocumentViewModel : ViewModel() {
     var topField = 0
 }
 
-private fun createFieldView(context: Context, fm: FieldModel): DocumentFragment.FieldView =
+internal class Editor(context: Context) : EditText(context)
+
+class DocumentFieldEditorDialog() : DialogFragment() {
+
+    internal constructor(editor:Editor) : this(){
+        this.editor = editor
+    }
+
+    private lateinit var editor: Editor
+
+    init {
+        isCancelable = false
+    }
+
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        return AlertDialog.Builder(context as Context)
+            .setView(editor)
+            .setNegativeButton("Cancel",{dialog, which ->  })
+            .setPositiveButton("Save",{dialog, which ->  })
+            .create()
+    }
+}
+
+private fun createFieldView(context: Context, position: Int,fm: FieldModel): DocumentFragment.FieldView =
     when(fm.type){
         FieldType.Text,
         FieldType.Integer,
         FieldType.Decimal,
         FieldType.LongText,
         FieldType.Dictionary,
-        FieldType.MVDictionary -> DocumentFragment.FieldView(context, fm.type,fm.title,"${fm.value}")
+        FieldType.MVDictionary -> DocumentFragment.FieldView(context, position,fm.type,fm.title,"${fm.value}")
         FieldType.Date -> DocumentFragment.DateFieldView(
             context,
+            position,
             fm.title,
             if(fm.value == null) "" else ShortDate.format(context,fm.value as Date))
         else ->

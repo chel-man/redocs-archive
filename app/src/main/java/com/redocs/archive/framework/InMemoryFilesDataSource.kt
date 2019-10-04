@@ -10,9 +10,13 @@ class InMemoryFilesDataSource : DataSource {
 
     override suspend fun list(parentId: Long): List<File> = withContext(Dispatchers.IO) {
         delay(2000)
-        listOf(
-            File(1, "File 1", 23445),
-            File(2, "File 2", 76857)
-        )
+        if(parentId == 2L)
+            listOf(
+                File(1, "File 1", 23445))
+        else
+            listOf(
+                File(1, "File 1", 23445),
+                File(2, "File 2", 76857)
+            )
     }
 }
