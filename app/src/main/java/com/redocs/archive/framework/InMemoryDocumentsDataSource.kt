@@ -27,7 +27,7 @@ class InMemoryDocumentsDataSource : DataSource {
     }
 
     override suspend fun get(id: Long): Document {
-        delay(1500)
+        delay(500)
         return data[id.toInt()-1]
     }
 

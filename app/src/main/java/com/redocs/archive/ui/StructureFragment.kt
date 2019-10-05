@@ -23,12 +23,7 @@ import com.redocs.archive.ui.view.partitions.PartitionsStructureTreeView
 class StructureFragment() : Fragment() {
 
     private var tree: PartitionsStructureTreeView? = null
-    //private var repo: PartitionsStructureRepository? = null
     private val vm by activityViewModels<PartitionStructureViewModel>()
-
-    /*constructor(dataSource: PartitionsStructureDataSource):this(){
-        repo=PartitionsStructureRepository(dataSource)
-    }*/
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -38,8 +33,7 @@ class StructureFragment() : Fragment() {
 
         val repo = PartitionsStructureRepository(
             ArchiveApplication.partitionsStructureDataSource)
-            //repo ?: vm.repository as PartitionsStructureRepository
-        //vm.repository=repo
+
         tree = PartitionsStructureTreeView(context as Context, vm, repo).apply {
                 addSelectionListener {
                     itemSelected(it)
@@ -51,7 +45,6 @@ class StructureFragment() : Fragment() {
                 }
             }
 
-        //Log.d("#STRUCTURE","CREATED")
         return object:LinearLayoutCompat(context) {
             override fun generateDefaultLayoutParams(): LayoutParams? =
                 LayoutParams(

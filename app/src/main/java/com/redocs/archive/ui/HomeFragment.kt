@@ -26,8 +26,10 @@ import com.redocs.archive.R
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.framework.EventBusSubscriber
 import com.redocs.archive.framework.subscribe
+import com.redocs.archive.isParentOf
 import com.redocs.archive.ui.events.*
-import com.redocs.archive.ui.view.ActivablePanel
+import com.redocs.archive.ui.utils.ActivablePanel
+import com.redocs.archive.ui.utils.ContextActionSource
 import com.redocs.archive.ui.view.tabs.TabBarView
 import com.redocs.archive.ui.view.tabs.tabBar
 import kotlinx.android.synthetic.main.home_fragment.*
@@ -94,7 +96,7 @@ class HomeFragment : Fragment(), EventBusSubscriber {
                 title { R.string.documents_tab_title }
                 fragment {
                     onCreate {
-                        DocumentsFragment()
+                        DocumentListFragment()
                     }
                 }
             }

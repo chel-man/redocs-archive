@@ -2,7 +2,7 @@ package com.redocs.archive.ui.events
 
 import com.redocs.archive.domain.document.Document
 import com.redocs.archive.framework.EventBus
-import com.redocs.archive.ui.ContextActionSource
+import com.redocs.archive.ui.utils.ContextActionSource
 
 class PartitionNodeSelectedEvent(id: Long) : EventBus.Event<Long>(id)
 class SelectPartitionNodeRequestEvent(id: Long) : EventBus.Event<Long>(id)

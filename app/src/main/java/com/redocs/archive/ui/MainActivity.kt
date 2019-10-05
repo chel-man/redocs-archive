@@ -1,11 +1,10 @@
 package com.redocs.archive.ui
 
 import android.os.Bundle
-import android.util.Log
-import androidx.appcompat.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.NavController
@@ -18,6 +17,7 @@ import com.redocs.archive.framework.EventBusSubscriber
 import com.redocs.archive.framework.subscribe
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.ContextActionStoppedEvent
+import com.redocs.archive.ui.utils.ContextActionSource
 
 class MainActivity : AppCompatActivity(), EventBusSubscriber {
 
@@ -143,7 +143,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber {
                 override fun onCreateActionMode(mode: ActionMode, menu: Menu?): Boolean {
 
                     if (menu != null) {
-                        source.createContextActionMenu(mode.menuInflater,menu)
+                        source.createContextActionMenu(mode,mode.menuInflater,menu)
                         return true
                     }
                     return false

@@ -2,7 +2,6 @@ package com.redocs.archive.ui.view.partitions
 
 import android.content.Context
 import android.graphics.Color
-import android.util.Log
 import android.view.*
 import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
@@ -17,10 +16,10 @@ import com.redocs.archive.data.partitions.PartitionsStructureRepository
 import com.redocs.archive.domain.TreeNode
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.framework.EventBusSubscriber
-import com.redocs.archive.ui.ContextActionSource
+import com.redocs.archive.ui.utils.ContextActionSource
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.SelectPartitionNodeRequestEvent
-import com.redocs.archive.ui.setItemEnabled
+import com.redocs.archive.setItemEnabled
 import com.redocs.archive.ui.utils.convertDpToPixel
 import com.redocs.archive.ui.view.tree.TreeView
 import com.redocs.archive.ui.view.tree.TreeViewNode
@@ -32,7 +31,8 @@ class PartitionsStructureTreeView(
     vm: TreeViewViewModel,
     repository: PartitionsStructureRepository
 
-): TreeView<PartitionStructureTreeViewNode>(context, vm), ContextActionSource, EventBusSubscriber {
+): TreeView<PartitionStructureTreeViewNode>(context, vm),
+    ContextActionSource, EventBusSubscriber {
     override val lockContent = true
 
     var nodeActionListener: ((id: Long, action: Action)->Unit)? = null
@@ -113,7 +113,7 @@ class PartitionsStructureTreeView(
         return lc
     }
 
-    override fun createContextActionMenu(inflater: MenuInflater, menu: Menu) {
+    override fun createContextActionMenu(mode: ActionMode,inflater: MenuInflater, menu: Menu) {
         isEnabled =false
         inflater.inflate(contextMenuIdRes,menu)
         configureContextActionMenu(menu)

@@ -1,4 +1,4 @@
-package com.redocs.archive.ui.view
+package com.redocs.archive.ui.utils
 
 sealed class Operation {
     var proccessed = false

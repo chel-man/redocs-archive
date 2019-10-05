@@ -1,30 +1,29 @@
-package com.redocs.archive.ui
+package com.redocs.archive.ui.view.documents
 
 import android.content.Context
-import android.os.Bundle
 import android.util.Log
-import android.view.*
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.View
 import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.view.ActionMode
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.ViewCompat
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
-import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
 import com.redocs.archive.data.documents.Repository
 import com.redocs.archive.domain.document.Document
 import com.redocs.archive.framework.EventBus
-import com.redocs.archive.framework.EventBusSubscriber
-import com.redocs.archive.framework.subscribe
-import com.redocs.archive.ui.events.*
-import com.redocs.archive.ui.models.DocumentsViewModel
+import com.redocs.archive.ui.utils.ContextActionSource
+import com.redocs.archive.ui.DocumentListViewModel
+import com.redocs.archive.ui.events.ContextActionRequestEvent
+import com.redocs.archive.ui.events.DocumentSelectedEvent
+import com.redocs.archive.ui.events.ShowDocumentEvent
 import com.redocs.archive.ui.utils.LongDate
 import com.redocs.archive.ui.utils.convertDpToPixel
 import com.redocs.archive.ui.utils.showError
-import com.redocs.archive.ui.view.ActivablePanel
 import com.redocs.archive.ui.view.list.ListRow
 import com.redocs.archive.ui.view.list.ListView
 import kotlinx.coroutines.CoroutineScope
@@ -32,91 +31,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.*
 
-class DocumentsFragment() : Fragment(), ActivablePanel, EventBusSubscriber {
-
-    override var isActive = false
-
-    private var parentId = Long.MIN_VALUE
-    private var documentList: Collection<Document>? = null
-    private var documentListChanged = true
-
-    private var listView: DocumentListView? = null
-    //private var repo: Repository? = null
-    private val vm by activityViewModels<DocumentsViewModel>()
-
-    /*constructor():super(){
-        Log.d("#DLF","RESTORED")
-    }*/
-
-    /*constructor(ds: DataSource):this() {
-        repo = Repository(ds)
-        //Log.d("#DLF","CREATED")
-    }*/
-
-    init {
-        subscribe(
-            PartitionNodeSelectedEvent::class.java,
-            ShowDocumentListRequestEvent::class.java)
-    }
-
-    override fun onEvent(evt: EventBus.Event<*>) {
-
-        when(evt){
-            is PartitionNodeSelectedEvent -> {
-                    documentList = null
-                    documentListChanged = true
-                    parentId = evt.data
-                }
-            is ShowDocumentListRequestEvent -> {
-                    parentId = Long.MIN_VALUE
-                    documentList = evt.data
-                    documentListChanged = true
-                }
-        }
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        val repo = Repository(
-            ArchiveApplication.documentsDataSource)
-            //repo ?: vm.repository as Repository
-        //vm.repository=repo
-        listView = DocumentListView(context as Context, vm, repo)
-        return listView
-    }
-
-    override fun activate() {
-        //Log.d("#DLF","ACTIVATE $parentId / ${vm.parentId}")
-        val l = documentList
-        if (l != null) {
-            if (documentListChanged) {
-                documentListChanged = false
-                listView?.refresh(l)
-            }
-        } else if (parentId != Long.MIN_VALUE) {
-            listView?.refresh(parentId)
-        }
-        vm.parentId = parentId
-        vm.documentListChanged = documentListChanged
-    }
-
-    override fun deactivate() {
-        listView?.deactivate()
-    }
-
-}
-
-private class DocumentListView(
+class DocumentListView(
     context: Context,
-    vm: DocumentsViewModel,
+    vm: DocumentListViewModel,
     repo: Repository
 ) : ListView<ListRow>(
-        context, vm,
-        ListAdapter(context,vm.coroScope,repo)
-    ), ContextActionSource {
+    context, vm,
+    ListAdapter(context,vm.coroScope,repo)
+), ContextActionSource {
 
     override val lockContent = false
 
@@ -177,7 +99,7 @@ private class DocumentListView(
         saveState()
     }
 
-    override fun createContextActionMenu(inflater: MenuInflater, menu: Menu) {
+    override fun createContextActionMenu(mode: ActionMode, inflater: MenuInflater, menu: Menu) {
         inflater.inflate(R.menu.documents_context_menu, menu)
         isContextAction = true
     }

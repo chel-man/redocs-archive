@@ -1,4 +1,4 @@
-package com.redocs.archive.ui
+package com.redocs.archive.ui.utils
 
 import android.view.Menu
 import android.view.MenuInflater
@@ -9,7 +9,7 @@ interface ContextActionSource {
 
     val lockContent: Boolean
 
-    fun createContextActionMenu(inflater: MenuInflater, menu: Menu)
+    fun createContextActionMenu(mode: ActionMode,inflater: MenuInflater, menu: Menu)
     fun onDestroyContextAction()
     fun onContextMenuItemClick(mode: ActionMode, item: MenuItem?): Boolean
 }

@@ -33,4 +33,9 @@
     <string name="file_id_title">ID</string>
     <string name="file_name_title">Name</string>
     <string name="file_size_title">Size</string>
+
+    <string name="dialog_yes_button_title">Yes</string>
+    <string name="dialog_no_button_title">No</string>
+    <string name="dialog_cancel_button_title">Cancel</string>
+    <string name="dialog_save_button_title">Save</string>
 </resources>

@@ -1,6 +1,5 @@
 package com.redocs.archive.ui
 
-import android.app.Dialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -10,7 +9,6 @@ import android.view.*
 import android.view.Gravity.CENTER
 import android.view.Gravity.END
 import android.widget.*
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.view.ActionMode
@@ -23,7 +21,6 @@ import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.setMargins
 import androidx.core.view.setPadding
-import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.MutableLiveData
@@ -31,22 +28,26 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
+import com.redocs.archive.asLongOrNull
+import com.redocs.archive.asLongOrOriginal
 import com.redocs.archive.data.files.Repository
+import com.redocs.archive.domain.document.DataType
 import com.redocs.archive.domain.document.Document
 import com.redocs.archive.domain.document.FieldType
 import com.redocs.archive.domain.file.File
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.framework.EventBusSubscriber
 import com.redocs.archive.framework.subscribe
+import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.DocumentSelectedEvent
-import com.redocs.archive.ui.utils.ShortDate
-import com.redocs.archive.ui.utils.convertDpToPixel
-import com.redocs.archive.ui.view.ActivablePanel
+import com.redocs.archive.ui.utils.*
+import com.redocs.archive.ui.utils.ActivablePanel
 import kotlinx.coroutines.launch
 import java.lang.Math.abs
 import java.util.*
 
-class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
+class DocumentFragment() : Fragment(), EventBusSubscriber,
+    ActivablePanel {
 
     override var isActive = false
 
@@ -150,14 +151,13 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
             }
         }
 
-
-    internal open class FieldView(
+    internal abstract class FieldView<T>(
         context: Context,
         private val position: Int,
         private val type: FieldType,
         title: String,
-        value: String?
-
+        isDirty: Boolean,
+        value: T?
     ) : TableRow(context) {
 
         var longClickListener : (Int)->Boolean = { false }
@@ -170,7 +170,7 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
                     gravity = Gravity.END
                 })
             addView(
-                createValueView(value).apply {
+                createValueView(format(value), isDirty).apply {
                     layoutParams = generateDefaultLayoutParams().apply {
                         setMargins(0, 0, 10, 0)
                         weight = 1F
@@ -183,20 +183,16 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
             setPadding(4)
         }
 
-        protected open fun getAlignment() =
-            when(type){
-                FieldType.Integer,
-                FieldType.Decimal -> Gravity.END
-                else ->
-                    Gravity.START
-            }
+        protected open fun format(v: T?): String = (v ?: "").toString()
 
-        protected open fun createValueView(value: String?) =
+        protected open fun getAlignment() = Gravity.START
+
+        protected open fun createValueView(value: String, isDirty: Boolean) =
             TextView(context).apply {
-                text = value ?: ""
+                text = value
                 gravity = getAlignment()
                 background = GradientDrawable().apply {
-                    setColor(Color.TRANSPARENT)
+                    setColor(if(isDirty) Color.YELLOW else Color.TRANSPARENT)
                     cornerRadius = 5f
                     setStroke(1, Color.BLACK)}
             }
@@ -207,14 +203,71 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
         context: Context?,
         position: Int,
         title: String,
-        value: String
-    ) : FieldView(
+        dirty: Boolean,
+        value: Date?
+    ) : FieldView<Date>(
         context as Context,
         position,
         FieldType.Date,
         title,
+        dirty,
+        value
+    ){
+        override fun format(v: Date?): String =
+            if(v == null) "" else ShortDate.format(context,v)
+    }
+
+    internal class TextBasedFieldView(
+        context: Context?,
+        position: Int,
+        type: FieldType,
+        title: String,
+        dirty: Boolean,
+        value: String?
+    ) : FieldView<String>(
+        context as Context,
+        position,
+        type,
+        title,
+        dirty,
         value
     )
+
+    internal class IntegerFieldView(
+        context: Context?,
+        position: Int,
+        type: FieldType,
+        title: String,
+        dirty: Boolean,
+        value: Long?
+    ) : FieldView<Long>(
+        context as Context,
+        position,
+        type,
+        title,
+        dirty,
+        value
+    ){
+        override fun getAlignment() = Gravity.END
+    }
+
+    internal class DecimalFieldView(
+        context: Context?,
+        position: Int,
+        type: FieldType,
+        title: String,
+        dirty: Boolean,
+        value: Double?
+    ) : FieldView<Double>(
+        context as Context,
+        position,
+        type,
+        title,
+        dirty,
+        value
+    ){
+        override fun getAlignment() = Gravity.END
+    }
 
     private class DocumentView(
         context: Context,
@@ -224,6 +277,8 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
     ) : LinearLayoutCompat(context), ContextActionSource {
 
         override val lockContent = false
+
+        private var actionMode: ActionMode? = null
 
         init{
             layoutParams = LinearLayoutCompat.LayoutParams(
@@ -268,20 +323,49 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
                 }
             }
             dm = model
+            checkActionMode()
+
+        }
+
+        private fun checkActionMode() {
+            if(dm.isDirty) {
+                if (actionMode == null)
+                    EventBus.publish(ContextActionRequestEvent(this))
+            }
+            else
+                actionMode?.finish()
+
         }
 
         private fun onFieldLongClick(position: Int): Boolean {
-            //EventBus.publish(ContextActionRequestEvent(this))
-            DocumentFieldEditorDialog(
-                Editor(context/*dm.fields[position]*/)
-            ).show((context as AppCompatActivity).supportFragmentManager,"Editor")
+
+            val field = dm.fields[position]
+            val ed = createFieldEditor(context, field.type.dataType, field.value)
+            ModalDialog(
+                ModalDialog.SaveDialogConfig(
+                    ed,
+                    title = "Редактирование",
+                    actionListener = { which ->
+                        when (which) {
+                            ModalDialog.DialogButton.POSITIVE -> {
+                                controller.setFieldValue(position, (ed as CustomEditor<*>).value)
+                            }
+
+                        }
+                    }
+                )
+            )
+                .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
             return true
         }
 
-        override fun createContextActionMenu(inflater: MenuInflater, menu: Menu) {
+        override fun createContextActionMenu(mode: ActionMode,inflater: MenuInflater, menu: Menu) {
+            actionMode = mode
         }
 
         override fun onDestroyContextAction() {
+            actionMode = null
+            controller.undo()
         }
 
         override fun onContextMenuItemClick(mode: ActionMode, item: MenuItem?): Boolean {
@@ -516,8 +600,8 @@ class DocumentFragment() : Fragment(), EventBusSubscriber, ActivablePanel {
 
         fun allowClose() = true
 
-        private fun createViews(context: Context, fields: Collection<FieldModel>): Collection<DocumentFragment.FieldView> {
-            val l = mutableListOf<DocumentFragment.FieldView>()
+        private fun createViews(context: Context, fields: Collection<FieldModel>): Collection<DocumentFragment.FieldView<*>> {
+            val l = mutableListOf<DocumentFragment.FieldView<*>>()
             var i = 0
             for(fm in fields)
                 l += createFieldView(context,i++,fm)
@@ -548,30 +632,56 @@ private data class DocumentModel(
         }
 }
 
-private data class FieldModel(
+private class FieldModel(
     val id: Long,
     val title: String,
     val type: FieldType,
-    val value: Any?,
-    val newValue: Any?
+    val value: Any?
 ){
 
-    val isDirty get() = value != newValue
+    val isDirty
+        get() =
+            value?.asLongOrOriginal() != initValue?.asLongOrOriginal()
+
+    private var initValue: Any? = value
+
+    private constructor(
+        id: Long,
+        title: String,
+        type: FieldType,
+        value: Any?,
+        initValue: Any?
+    ) : this(
+        id,title,type,value
+    ){
+        this.initValue = initValue
+    }
+
+    fun undo() = FieldModel(id,title,type,initValue,initValue)
+
+    fun copy(value: Any?) =
+        FieldModel(id,title,type,value,initValue)
 
     override fun equals(other: Any?): Boolean {
-        if (this === other) return true
+
+        if(other === this) return true
         if (javaClass != other?.javaClass) return false
 
         other as FieldModel
 
         if (id != other.id) return false
+        if (value != other.value) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        return id.hashCode()
+        var result = id.hashCode()
+        result = 31 * result + (value?.hashCode() ?: 0)
+        return result
     }
+
+    override fun toString(): String = "id: $id iv: $initValue v: $value"
 }
 
 private data class FileModel(
@@ -596,7 +706,7 @@ private data class FileModel(
 }
 
 private inline fun Document.Field.toModel() =
-    FieldModel(id,title,type,value,value)
+    FieldModel(id,title,type,value)
 
 private inline fun Document.toModel() =
     DocumentModel(id,name,filesCount,fields.map { it.toModel() })
@@ -634,6 +744,23 @@ private class Controller(
         val d = vm.document.value as DocumentModel
         vm.document.value = d.copy(files = emptyList())
     }
+
+    fun setFieldValue(position: Int, v: Any?) {
+        val d = vm.document.value as DocumentModel
+        val l = mutableListOf<FieldModel>().apply {
+            addAll(d.fields)
+        }
+        l[position]= d.fields[position].copy(v)
+        vm.document.value = d.copy(fields = l.toList())
+    }
+
+    fun undo() {
+        val d = vm.document.value as DocumentModel
+        val l = mutableListOf<FieldModel>()
+        for(f in d.fields)
+            l += f.undo()
+        vm.document.value = d.copy(fields = l.toList())
+    }
 }
 
 class DocumentViewModel : ViewModel() {
@@ -645,42 +772,37 @@ class DocumentViewModel : ViewModel() {
     var topField = 0
 }
 
-internal class Editor(context: Context) : EditText(context)
-
-class DocumentFieldEditorDialog() : DialogFragment() {
-
-    internal constructor(editor:Editor) : this(){
-        this.editor = editor
-    }
-
-    private lateinit var editor: Editor
-
-    init {
-        isCancelable = false
-    }
-
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        return AlertDialog.Builder(context as Context)
-            .setView(editor)
-            .setNegativeButton("Cancel",{dialog, which ->  })
-            .setPositiveButton("Save",{dialog, which ->  })
-            .create()
-    }
-}
-
-private fun createFieldView(context: Context, position: Int,fm: FieldModel): DocumentFragment.FieldView =
+private fun createFieldView(context: Context, position: Int,fm: FieldModel): DocumentFragment.FieldView<*> =
     when(fm.type){
-        FieldType.Text,
-        FieldType.Integer,
-        FieldType.Decimal,
         FieldType.LongText,
+        FieldType.Text,
         FieldType.Dictionary,
-        FieldType.MVDictionary -> DocumentFragment.FieldView(context, position,fm.type,fm.title,"${fm.value}")
+        FieldType.MVDictionary ->
+            DocumentFragment.TextBasedFieldView(
+                context, position,fm.type,fm.title,fm.isDirty,fm.value.toString())
+
+        FieldType.Integer ->
+            DocumentFragment.IntegerFieldView(
+                context, position, fm.type, fm.title, fm.isDirty, fm.value?.asLongOrNull())
+
+        FieldType.Decimal ->
+            DocumentFragment.DecimalFieldView(
+                context,position,fm.type,fm.title,fm.isDirty,fm.value as Double?)
+
         FieldType.Date -> DocumentFragment.DateFieldView(
             context,
             position,
             fm.title,
-            if(fm.value == null) "" else ShortDate.format(context,fm.value as Date))
+            fm.isDirty,
+            fm.value as Date?)
         else ->
             throw ClassNotFoundException("Field of type ${fm.type} not found")
+    }
+
+private fun createFieldEditor(context: Context, dataType: DataType, value: Any?): View =
+    when(dataType){
+        DataType.Integer -> IntegerCustomEditor(context, value?.asLongOrNull())
+        DataType.Decimal -> DecimalCustomEditor(context, value as Double?)
+        else ->
+            TextCustomEditor(context,value.toString())
     }

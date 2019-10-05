@@ -1,4 +1,4 @@
-package com.redocs.archive.ui.view
+package com.redocs.archive.ui.utils
 
 interface ActivablePanel {
     var isActive: Boolean

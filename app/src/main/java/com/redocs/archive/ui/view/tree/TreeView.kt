@@ -10,20 +10,14 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.*
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.redocs.archive.R
-import com.redocs.archive.domain.TreeNode
-import com.redocs.archive.ui.ContextActionSource
-import com.redocs.archive.ui.utils.convertDpToPixel
-import com.redocs.archive.ui.utils.showError
-import com.redocs.archive.ui.view.*
+import com.redocs.archive.ui.utils.*
 import kotlinx.coroutines.*
 
 abstract class TreeView<T : TreeViewNode>(
@@ -506,7 +500,7 @@ abstract class TreeView<T : TreeViewNode>(
         private fun getPosition(node: T): Int {
             val index=items.indexOf(node)
             if(index<0)
-                throw NotFoundException(node.id,"getPosition")
+                throw NotFoundException(node.id, "getPosition")
             return index
         }
 
@@ -612,7 +606,7 @@ abstract class TreeView<T : TreeViewNode>(
         }
 
         private fun notifyItemRangeRemoved(pos: Int, size: Int) {
-            notifyObservers(RemoveOperation(pos,size))
+            notifyObservers(RemoveOperation(pos, size))
         }
 
         private fun notifyObservers(op: Operation) {
@@ -633,7 +627,7 @@ abstract class TreeView<T : TreeViewNode>(
                 items.add(position, node)
                 return node
             } else
-                throw NotFoundException(position.toLong(),"replace")
+                throw NotFoundException(position.toLong(), "replace")
         }
 
         private fun find(id: Long): Int {
@@ -668,7 +662,12 @@ abstract class TreeView<T : TreeViewNode>(
                                     size = expandInternal(pos)
                                 }
                                 if (pos == -1 || size < 1) {
-                                    notifyError(NotFoundException(pid,"select()"))
+                                    notifyError(
+                                        NotFoundException(
+                                            pid,
+                                            "select()"
+                                        )
+                                    )
                                     break
                                 }
                             }

@@ -2,16 +2,15 @@ package com.redocs.archive.ui
 
 import android.content.Context
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import com.redocs.archive.data.files.DataSource
 import com.redocs.archive.data.files.Repository
-import com.redocs.archive.ui.models.DocumentsViewModel
-import com.redocs.archive.ui.view.ActivablePanel
+import com.redocs.archive.ui.utils.ActivablePanel
 import com.redocs.archive.ui.view.list.ListView
 import com.redocs.archive.ui.view.list.ListRow
 import kotlinx.coroutines.delay
 
-class FilesFragment() : Fragment(), /*ContextActionBridge,*/ ActivablePanel {
+class FilesFragment() : Fragment(), /*ContextActionBridge,*/
+    ActivablePanel {
 
     //override lateinit var contextActionModeController: ContextActionModeController
     override var isActive = false
@@ -19,7 +18,7 @@ class FilesFragment() : Fragment(), /*ContextActionBridge,*/ ActivablePanel {
     private lateinit var listView: ListView<ListRow>
     //override var actionListener: (Boolean) -> Unit = {}
     private var repo: Repository? = null
-    private val vm by activityViewModels<DocumentsViewModel>()
+    //private val vm by activityViewModels<DocumentListViewModel>()
 
     constructor(ds: DataSource):this() {
         this.repo = Repository(ds)
