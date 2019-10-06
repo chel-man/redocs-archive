@@ -1,4 +1,4 @@
-package com.redocs.archive.ui.view.documents
+package com.redocs.archive.ui.view.documents.list
 
 import android.content.Context
 import android.util.Log

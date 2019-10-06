@@ -16,7 +16,7 @@ import com.redocs.archive.framework.subscribe
 import com.redocs.archive.ui.events.PartitionNodeSelectedEvent
 import com.redocs.archive.ui.events.ShowDocumentListRequestEvent
 import com.redocs.archive.ui.utils.ActivablePanel
-import com.redocs.archive.ui.view.documents.DocumentListView
+import com.redocs.archive.ui.view.documents.list.DocumentListView
 import com.redocs.archive.ui.view.list.ListViewModel
 
 class DocumentListFragment() : Fragment(), ActivablePanel, EventBusSubscriber {
