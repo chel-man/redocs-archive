@@ -117,26 +117,7 @@ class DocumentDetaileView(
     private fun onFieldLongClick(position: Int): Boolean {
 
         val field = dm.fields[position]
-        val ed = createFieldEditor(
-            context,
-            field.type.dataType,
-            field.value
-        )
-        ModalDialog(
-            ModalDialog.SaveDialogConfig(
-                ed,
-                title = "Редактирование",
-                actionListener = { which ->
-                    when (which) {
-                        ModalDialog.DialogButton.POSITIVE -> {
-                            controller.setFieldValue(position, (ed as CustomEditor<*>).value)
-                        }
-
-                    }
-                }
-            )
-        )
-            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
+        controller.editField(context,field,position)
         return true
     }
 
@@ -549,14 +530,22 @@ class DocumentDetaileView(
             override fun getAlignment() = Gravity.END
         }
 
+        /*private class DictionaryFieldView(
+            context: Context?,
+            position: Int,
+            title: String,
+            dirty: Boolean,
+            value: DocumentModel.DictionaryEntry?
+        ) : FieldView<DocumentModel.DictionaryEntry>(
+            context as Context,
+            position,
+            FieldType.Dictionary,
+            title,
+            dirty,
+            value
+        ) {
+            override fun format(v: Date?): String =
+                if (v == null) "" else ShortDate.format(context, v)
+        }*/
     }
-
-    private fun createFieldEditor(context: Context, dataType: DataType, value: Any?): View =
-        when (dataType) {
-            DataType.Integer -> IntegerCustomEditor(context, value?.asLongOrNull())
-            DataType.Decimal -> DecimalCustomEditor(context, value as Double?)
-            else ->
-                TextCustomEditor(context, value.toString())
-        }
-
 }

@@ -4,26 +4,31 @@ import android.content.Context
 import android.os.Handler
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.widget.EditText
+import android.widget.ProgressBar
 import androidx.appcompat.widget.LinearLayoutCompat
 import com.redocs.archive.setFocusAndShowKeyboard
 
-class FilteredList<T> (
+open class FilteredList<T> (
     context: Context,
-    private val data: List<T>,
-    value: T? = null
+    private val value: T? = null
 ) : LinearLayoutCompat(context){
 
     var selectionListener: (()->Unit)? = null
-
     val selected: T?
-        get() = data[position]
+        get() = (data as List<T>)[position]
 
     var text: String? = null
+    var data: List<T> = emptyList()
+        set(value) {
+            loadDataToList(value as List<T>)
+            field = value
+        }
 
     private var position = -1
     private val filtered: MutableList<T> = mutableListOf()
-    private val list = SimpleList<T>(context)
+    private var list: SimpleList<T>? = null
 
     init {
         layoutParams = LayoutParams(
@@ -61,38 +66,51 @@ class FilteredList<T> (
         )
 
         addView(
-            list.apply {
+            ProgressBar(context).apply {
+                this.isIndeterminate = true
+            }
+        )
+    }
+
+    private fun loadDataToList(data: List<T>){
+
+        if(list == null){
+            list = SimpleList<T>(context).apply {
                 selectionListener = {position: Int ->
                     this@FilteredList.position = position
                     this@FilteredList.selectionListener?.invoke()
                 }
 
                 Handler().post {
+                    this.data = data
                     if(value != null)
                         setFilter(value.toString())
-                    else
-                        data = data
                 }
             }
-        )
+
+            removeViewAt(1)
+            addView(list)
+        }
+        else
+            list?.data = data
+
     }
 
     private fun setFilter(text: String){
 
-        val filter = text.toLowerCase()
+        val filter = text.toLowerCase().trim()
         val flen = filter.length
 
         filtered.clear()
         this@FilteredList.text = text
         position = -1
-
         for(m in data){
             val ms = m.toString().toLowerCase()
-            if(ms.length <= flen && ms.contains(filter))
+            if(ms.length >= flen && ms.contains(filter))
                 filtered += m
         }
 
-        list.data = filtered
+        (list as SimpleList<T>).data = filtered
 
     }
 }

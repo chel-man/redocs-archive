@@ -10,12 +10,20 @@ data class Document (
     val created: Date,
     val updated: Date){
 
-    data class Field(
+    open class Field(
         val id: Long,
         val title: String,
         val type: FieldType,
         val value: Any?
     )
+
+    class DictionaryField(
+        id: Long,
+        title: String,
+        val dictionaryId: Long,
+        value: Any?
+
+    ) : Field(id,title,FieldType.Dictionary,value)
 
 }
 
@@ -24,7 +32,8 @@ enum class DataType {
     Text,
     Integer,
     Decimal,
-    Date
+    Date,
+    DictionaryEntry
 }
 
 enum class FieldType(val dataType: DataType) {
@@ -33,6 +42,6 @@ enum class FieldType(val dataType: DataType) {
     Date(DataType.Date),
     Text(DataType.Text),
     LongText(DataType.Text),
-    Dictionary(DataType.Text),
-    MVDictionary(DataType.Text)
+    Dictionary(DataType.DictionaryEntry),
+    MVDictionary(DataType.DictionaryEntry)
 }

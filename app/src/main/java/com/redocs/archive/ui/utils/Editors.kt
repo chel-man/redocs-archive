@@ -2,8 +2,10 @@ package com.redocs.archive.ui.utils
 
 import android.content.Context
 import android.text.InputType
+import android.widget.DatePicker
 import android.widget.EditText
 import com.redocs.archive.setFocusAndShowKeyboard
+import java.util.*
 
 interface CustomEditor<T> {
     val value: T?
@@ -65,4 +67,17 @@ class DecimalCustomEditor(
                 InputType.TYPE_NUMBER_FLAG_DECIMAL or
                 InputType.TYPE_NUMBER_FLAG_SIGNED
     }
+}
+
+class DateEditor(
+    context: Context, value: Date?
+) : DatePicker(
+    context
+), CustomEditor<Date> {
+
+    override val value: Date?
+        get() =
+            Calendar.getInstance().apply {
+                this.set(year,month,dayOfMonth)
+            }.time
 }

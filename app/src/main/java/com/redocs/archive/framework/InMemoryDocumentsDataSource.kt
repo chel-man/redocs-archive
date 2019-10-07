@@ -2,10 +2,11 @@ package com.redocs.archive.framework
 
 import android.util.Log
 import com.redocs.archive.data.documents.DataSource
+import com.redocs.archive.domain.dictionary.Dictionary
 import com.redocs.archive.domain.document.Document
 import com.redocs.archive.domain.document.FieldType
 import kotlinx.coroutines.delay
-import java.util.*
+import java.util.Date
 
 class InMemoryDocumentsDataSource : DataSource {
 
@@ -21,7 +22,8 @@ class InMemoryDocumentsDataSource : DataSource {
                         "Text value Text value Text value Text value Text value Text value Text value Text value Text value"),
                     Document.Field(2,"Integer long title",FieldType.Integer,12547),
                     Document.Field(4,"Decimal",FieldType.Decimal,365.457),
-                    Document.Field(5,"Date",FieldType.Date,Date())
+                    Document.Field(5,"Date",FieldType.Date, Date()),
+                    Document.DictionaryField(6,"Dictionary",1, Dictionary.Entry(1,""))
                 ),
                 (i-1).toInt(),Date(), Date())
     }

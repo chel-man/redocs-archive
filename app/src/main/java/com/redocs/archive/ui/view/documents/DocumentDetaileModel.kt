@@ -24,36 +24,25 @@ data class DocumentModel(
             return false
         }
 
-    class FieldModel(
+    open class FieldModel(
         val id: Long,
         val title: String,
         val type: FieldType,
         val value: Any?
     ) {
 
-        val isDirty
+        open val isDirty
             get() =
                 value?.asLongOrOriginal() != initValue?.asLongOrOriginal()
 
-        private var initValue: Any? = value
+        protected var initValue: Any? = value
 
-        private constructor(
-            id: Long,
-            title: String,
-            type: FieldType,
-            value: Any?,
-            initValue: Any?
-        ) : this(
-            id, title, type, value
-        ) {
-            this.initValue = initValue
-        }
+        fun undo() = copy(initValue)
 
-        fun undo() =
-            FieldModel(id, title, type, initValue, initValue)
+        fun copy(value: Any?) = createInstance(value, initValue)
 
-        fun copy(value: Any?) =
-            FieldModel(id, title, type, value, initValue)
+        protected open fun createInstance(value: Any?, iv: Any?) =
+            FieldModel(id, title, type, value).apply { initValue = iv }
 
         override fun equals(other: Any?): Boolean {
 
@@ -77,6 +66,23 @@ data class DocumentModel(
         override fun toString(): String = "id: $id iv: $initValue v: $value"
     }
 
+    class DictionaryFieldModel(
+        id: Long,
+        title: String,
+        type: FieldType,
+        val dictionaryId: Long,
+        value: DictionaryEntry?
+    ) : FieldModel(
+        id, title, type, value
+    ){
+
+        override fun createInstance(value: Any?, iv: Any?) =
+            DictionaryFieldModel(
+                id, title, type, dictionaryId,value as DictionaryEntry?).apply {
+                    initValue = iv}
+
+    }
+
     data class FileModel(
         val id: Long,
         val name: String,
@@ -95,6 +101,30 @@ data class DocumentModel(
 
         override fun hashCode(): Int {
             return id.hashCode()
+        }
+    }
+
+    data class DictionaryEntry(
+        val id: Long,
+        val text: String
+    ){
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as DictionaryEntry
+
+            if (id != other.id) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            return id.hashCode()
+        }
+
+        override fun toString(): String {
+            return text
         }
     }
 }

@@ -1,16 +1,17 @@
 package com.redocs.archive.ui.view.list
 
 import android.content.Context
+import android.util.Log
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
-class SimpleList<T>(context: Context) : RecyclerView(context){
+open class SimpleList<T>(context: Context) : RecyclerView(context){
 
     var data: List<T> = emptyList()
         set(value) {
-            adapter = Adapter<T>(context, data, {pos ->
+            adapter = Adapter<T>(context, value, {pos ->
                 selectionListener?.invoke(pos)
             })
         }

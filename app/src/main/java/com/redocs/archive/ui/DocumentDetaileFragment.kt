@@ -14,6 +14,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.redocs.archive.ArchiveApplication
+import com.redocs.archive.data.dictionary.DictionaryRepository
 import com.redocs.archive.data.files.Repository
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.framework.EventBusSubscriber
@@ -33,6 +34,9 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
     private val filesRepo = Repository(ArchiveApplication.filesDataSource)
     private val docsRepo = com.redocs.archive.data.documents.Repository(
         ArchiveApplication.documentsDataSource
+    )
+    private val dictsRepo = DictionaryRepository(
+        ArchiveApplication.dictinaryDataSource
     )
 
     init {
@@ -77,7 +81,8 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
             vm.coroScope,
             vm.document as MutableLiveData<DocumentModel>,
             docsRepo,
-            filesRepo
+            filesRepo,
+            dictsRepo
         )
         vm.controller = ctr
         return ctr as Controller
@@ -131,7 +136,7 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
         }
 }
 
-private class DocumentViewModel : ViewModel() {
+class DocumentViewModel : ViewModel() {
 
     var documentId: Long = Long.MIN_VALUE
     val coroScope= viewModelScope
