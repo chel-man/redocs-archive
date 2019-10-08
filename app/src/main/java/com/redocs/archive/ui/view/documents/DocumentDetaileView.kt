@@ -334,7 +334,7 @@ class DocumentDetaileView(
 
     private class FieldListView(
         context: Context,
-        fields: Collection<DocumentModel.FieldModel>,
+        fields: Collection<DocumentModel.FieldModel<*>>,
         longClickListener: (Int) -> Boolean
     ) : CardView(
         context
@@ -367,7 +367,7 @@ class DocumentDetaileView(
 
         private fun createViews(
             context: Context,
-            fields: Collection<DocumentModel.FieldModel>
+            fields: Collection<DocumentModel.FieldModel<*>>
         ): Collection<FieldView<*>> {
             val l = mutableListOf<FieldView<*>>()
             var i = 0
@@ -379,7 +379,7 @@ class DocumentDetaileView(
         private fun createFieldView(
             context: Context,
             position: Int,
-            fm: DocumentModel.FieldModel
+            fm: DocumentModel.FieldModel<*>
         ): FieldView<*> =
             when (fm.type) {
                 FieldType.LongText,
@@ -392,7 +392,7 @@ class DocumentDetaileView(
 
                 FieldType.Integer ->
                     IntegerFieldView(
-                        context, position, fm.type, fm.title, fm.isDirty, fm.value?.asLongOrNull()
+                        context, position, fm.type, fm.title, fm.isDirty, fm.value as Long?
                     )
 
                 FieldType.Decimal ->

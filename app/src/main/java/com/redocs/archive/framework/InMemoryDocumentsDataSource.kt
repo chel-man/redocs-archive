@@ -21,9 +21,9 @@ class InMemoryDocumentsDataSource : DataSource {
                     Document.Field(3,"long Text",FieldType.LongText,
                         "Text value Text value Text value Text value Text value Text value Text value Text value Text value"),
                     Document.Field(2,"Integer long title",FieldType.Integer,12547),
-                    Document.Field(4,"Decimal",FieldType.Decimal,365.457),
+                    Document.Field(4,"Decimal",FieldType.Decimal,365.457f),
                     Document.Field(5,"Date",FieldType.Date, Date()),
-                    Document.DictionaryField(6,"Dictionary",1, Dictionary.Entry(1,""))
+                    Document.DictionaryField(6,"Dictionary",1, Dictionary.Entry(1,"Entry 1"))
                 ),
                 (i-1).toInt(),Date(), Date())
     }

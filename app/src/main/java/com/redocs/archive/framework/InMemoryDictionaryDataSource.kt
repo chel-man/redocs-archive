@@ -7,13 +7,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 class InMemoryDictionaryDataSource : DictionaryDataSource {
+
+    val data = mutableListOf<Dictionary.Entry>()
+    init {
+        for(i in 1..100L)
+            data += Dictionary.Entry(i,"Entry $i")
+    }
+
     override suspend fun getEntries(id: Long): List<Dictionary.Entry> =
         withContext(Dispatchers.IO) {
-            delay(3000)
-            listOf<Dictionary.Entry>(
-                Dictionary.Entry(1,"Entry 1"),
-                Dictionary.Entry(2,"Entry 2"),
-                Dictionary.Entry(3,"Entry 3")
-            )
+            //delay(3000)
+            data
         }
 }

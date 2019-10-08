@@ -2,6 +2,7 @@ package com.redocs.archive.ui.view.documents
 
 import com.redocs.archive.asLongOrOriginal
 import com.redocs.archive.domain.document.FieldType
+import java.util.*
 
 interface DocumentModelInterface
 
@@ -9,7 +10,7 @@ data class DocumentModel(
     val id: Long,
     val name: String,
     val filesCount: Int = 0,
-    val fields: List<FieldModel> = emptyList(),
+    val fields: List<FieldModel<*>> = emptyList(),
     val files: Collection<FileModel> = emptyList()
 ) : DocumentModelInterface {
 
@@ -24,32 +25,31 @@ data class DocumentModel(
             return false
         }
 
-    open class FieldModel(
+    abstract class FieldModel<T>(
         val id: Long,
         val title: String,
         val type: FieldType,
-        val value: Any?
+        val value: T?
     ) {
 
         open val isDirty
             get() =
-                value?.asLongOrOriginal() != initValue?.asLongOrOriginal()
+                value != initValue
 
-        protected var initValue: Any? = value
+        protected var initValue: T? = value
 
         fun undo() = copy(initValue)
 
-        fun copy(value: Any?) = createInstance(value, initValue)
+        fun copy(value: T?) = createInstance(value, initValue)
 
-        protected open fun createInstance(value: Any?, iv: Any?) =
-            FieldModel(id, title, type, value).apply { initValue = iv }
+        protected abstract fun createInstance(value: T?, iv: T?): FieldModel<T>
 
         override fun equals(other: Any?): Boolean {
 
             if (other === this) return true
             if (javaClass != other?.javaClass) return false
 
-            other as FieldModel
+            other as FieldModel<T>
 
             if (id != other.id) return false
             if (value != other.value) return false
@@ -66,19 +66,78 @@ data class DocumentModel(
         override fun toString(): String = "id: $id iv: $initValue v: $value"
     }
 
+    class TextFieldModel(
+        id: Long,
+        title: String,
+        value: String?
+    ) : FieldModel<String>(
+        id, title, FieldType.Text, value
+    ){
+
+        override fun createInstance(value: String?, iv: String?) =
+            TextFieldModel(
+                id, title, value).apply {
+                initValue = iv}
+
+    }
+
+    class IntegerFieldModel(
+        id: Long,
+        title: String,
+        value: Long?
+    ) : FieldModel<Long>(
+        id, title, FieldType.Integer, value
+    ){
+
+        override fun createInstance(value: Long?, iv: Long?) =
+            IntegerFieldModel(
+                id, title, value).apply {
+                initValue = iv}
+
+    }
+
+    class DecimalFieldModel(
+        id: Long,
+        title: String,
+        value: Double?
+    ) : FieldModel<Double>(
+        id, title, FieldType.Decimal, value
+    ){
+
+        override fun createInstance(value: Double?, iv: Double?) =
+            DecimalFieldModel(
+                id, title, value).apply {
+                initValue = iv}
+
+    }
+
+    class DateFieldModel(
+        id: Long,
+        title: String,
+        value: Date?
+    ) : FieldModel<Date>(
+        id, title, FieldType.Date, value
+    ){
+
+        override fun createInstance(value: Date?, iv: Date?) =
+            DateFieldModel(
+                id, title, value).apply {
+                initValue = iv}
+
+    }
+
     class DictionaryFieldModel(
         id: Long,
         title: String,
-        type: FieldType,
         val dictionaryId: Long,
         value: DictionaryEntry?
-    ) : FieldModel(
-        id, title, type, value
+    ) : FieldModel<DictionaryEntry>(
+        id, title, FieldType.Dictionary, value
     ){
 
-        override fun createInstance(value: Any?, iv: Any?) =
+        override fun createInstance(value: DictionaryEntry?, iv: DictionaryEntry?) =
             DictionaryFieldModel(
-                id, title, type, dictionaryId,value as DictionaryEntry?).apply {
+                id, title, dictionaryId,value).apply {
                     initValue = iv}
 
     }

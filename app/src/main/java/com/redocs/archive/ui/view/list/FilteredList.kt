@@ -7,22 +7,24 @@ import android.text.TextWatcher
 import android.util.Log
 import android.widget.EditText
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import androidx.appcompat.widget.LinearLayoutCompat
 import com.redocs.archive.setFocusAndShowKeyboard
 
 open class FilteredList<T> (
     context: Context,
     private val value: T? = null
+
 ) : LinearLayoutCompat(context){
 
     var selectionListener: (()->Unit)? = null
     val selected: T?
-        get() = (data as List<T>)[position]
+        get() = (model.data as List<T>)[position]
 
     var text: String? = null
-    var data: List<T> = emptyList()
+    var model = SimpleList.ListModel<T>(emptyList())
         set(value) {
-            loadDataToList(value as List<T>)
+            loadDataToList(value as SimpleList.ListModel<T>)
             field = value
         }
 
@@ -34,9 +36,11 @@ open class FilteredList<T> (
         layoutParams = LayoutParams(
             LayoutParams.MATCH_PARENT,
             LayoutParams.MATCH_PARENT
-        ).apply {
-            orientation = VERTICAL
-        }
+        )
+
+        orientation = VERTICAL
+
+        setPadding(20,0,20,0)
 
         addView(
             EditText(context).apply {
@@ -72,7 +76,7 @@ open class FilteredList<T> (
         )
     }
 
-    private fun loadDataToList(data: List<T>){
+    private fun loadDataToList(model: SimpleList.ListModel<T>){
 
         if(list == null){
             list = SimpleList<T>(context).apply {
@@ -82,7 +86,7 @@ open class FilteredList<T> (
                 }
 
                 Handler().post {
-                    this.data = data
+                    this.model = model
                     if(value != null)
                         setFilter(value.toString())
                 }
@@ -92,7 +96,7 @@ open class FilteredList<T> (
             addView(list)
         }
         else
-            list?.data = data
+            list?.model = model
 
     }
 
@@ -104,13 +108,13 @@ open class FilteredList<T> (
         filtered.clear()
         this@FilteredList.text = text
         position = -1
-        for(m in data){
+        for(m in model.data){
             val ms = m.toString().toLowerCase()
             if(ms.length >= flen && ms.contains(filter))
                 filtered += m
         }
 
-        (list as SimpleList<T>).data = filtered
+        (list as SimpleList<T>).model = SimpleList.ListModel<T>(filtered)
 
     }
 }

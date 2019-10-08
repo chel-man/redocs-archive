@@ -43,7 +43,10 @@ fun EditText.setFocusAndShowKeyboard(){
 }
 
 fun Any.asLongOrNull(): Long? =
-    (this as? Long) ?: (this as Int)?.toLong()
+    (this as? Long) ?: (this as? Int)?.toLong()
+
+fun Any.asDoubleOrNull(): Double? =
+    (this as? Double) ?: (this as? Float)?.toDouble()
 
 fun Any.asLongOrOriginal(): Any {
 
