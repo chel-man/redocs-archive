@@ -37,7 +37,7 @@ class TypesFragment : Fragment() {
         return inflater.inflate(R.layout.types_fragment, container, false)
     }
 
-    var dimmed=false
+    /*var dimmed=false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -46,5 +46,5 @@ class TypesFragment : Fragment() {
             dimmed=!dimmed
             backLayout.isVisible = dimmed
         }
-    }
+    }*/
 }

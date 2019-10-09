@@ -1,8 +1,10 @@
 package com.redocs.archive.ui.view.documents
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.util.TypedValue
 import android.view.*
 import android.view.Gravity.CENTER
 import android.view.Gravity.END
@@ -17,6 +19,7 @@ import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.setMargins
 import androidx.core.view.setPadding
+import com.google.android.material.button.MaterialButton
 import com.redocs.archive.R
 import com.redocs.archive.asLongOrNull
 import com.redocs.archive.domain.document.DataType
@@ -24,6 +27,7 @@ import com.redocs.archive.domain.document.FieldType
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.utils.*
+import com.redocs.archive.ui.view.button.ImageButton
 import java.util.*
 
 
@@ -196,27 +200,16 @@ class DocumentDetaileView(
                             addView(
                                 ImageButton(context).apply {
 
-                                    setImageDrawable(
-                                        AppCompatResources.getDrawable(
-                                            context,
-                                            R.drawable.ic_view_white_24dp
-                                        )?.apply {
-                                            DrawableCompat.setTint(
-                                                this, Color.WHITE
-                                            )
-                                        }
-                                    )
-                                    /*val p = convertDpToPixel(12, context)
-                                setPadding(p, paddingTop, p, paddingBottom)*/
+                                    setIcon(android.R.drawable.ic_media_play, Color.WHITE)
                                     ViewCompat.setTooltipText(
                                         this,
                                         resources.getString(R.string.action_view)
                                     )
                                     setOnClickListener {
+                                        it.isEnabled = false
                                         loadList(
                                             context,
                                             parent,
-                                            it as ImageButton,
                                             controller,
                                             filesCount != files.size
                                         )
@@ -259,7 +252,6 @@ class DocumentDetaileView(
         private fun loadList(
             context: Context,
             container: ViewGroup,
-            button: ImageButton,
             controller: Controller,
             closed: Boolean
         ) {
@@ -268,7 +260,6 @@ class DocumentDetaileView(
                     ProgressBar(context).apply {
                         this.isIndeterminate = true
                     })
-                button.isEnabled = false
                 controller.showFiles()
             } else
                 controller.hideFiles()
