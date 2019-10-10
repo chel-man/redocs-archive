@@ -21,6 +21,7 @@ import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.SelectPartitionNodeRequestEvent
 import com.redocs.archive.setItemEnabled
 import com.redocs.archive.ui.utils.convertDpToPixel
+import com.redocs.archive.ui.view.button.ImageButton48
 import com.redocs.archive.ui.view.tree.TreeView
 import com.redocs.archive.ui.view.tree.TreeViewNode
 import com.redocs.archive.ui.view.tree.TreeViewViewModel
@@ -29,7 +30,7 @@ import kotlinx.coroutines.CoroutineScope
 class PartitionsStructureTreeView(
     context: Context,
     vm: TreeViewViewModel,
-    repository: PartitionsStructureRepository
+    private val repository: PartitionsStructureRepository
 
 ): TreeView<PartitionStructureTreeViewNode>(context, vm),
     ContextActionSource, EventBusSubscriber {
@@ -38,17 +39,13 @@ class PartitionsStructureTreeView(
     var nodeActionListener: ((id: Long, action: Action)->Unit)? = null
 
     private val contextMenuIdRes: Int = R.menu.partitions_context_menu
-    private var controller: PartitionsStructureTreeView.PartitionStructureTreeController? = null
     private var menu: Menu? = null
 
     init {
         //subscribe(SelectPartitionNodeRequestEvent::class)
-        /* Controller created in createController() called from base class before
-            call this constructor.
-            Not must save ref to it
-         */
-        controller?.repo = repository
-        controller = null
+
+        val c = vm.controller as PartitionStructureTreeController
+        c.repo = repository
         longClickListener = {
             if(selected?.id != -1L)
                 EventBus.publish(ContextActionRequestEvent(this))
@@ -63,23 +60,14 @@ class PartitionsStructureTreeView(
     override fun createNodeView(context: Context): TreeNodeView {
         val v = super.createNodeView(context)
         v.addView(
-            ImageView(context).apply {
-                setImageDrawable(
-                    AppCompatResources.getDrawable(
-                        context,
-                        R.drawable.ic_list_24dp
-                    )?.apply {
-                        DrawableCompat.setTint(
-                            this,
+            ImageButton48(context).apply {
+                setIcon(R.drawable.ic_list_24dp,
                             ContextCompat.getColor(
                                 context, R.color.colorPrimary
                             )
                         )
-                    }
-                )
-                val p = convertDpToPixel(12, context)
-                setPadding(p, paddingTop, p, paddingBottom)
-                //setBackgroundColor(ContextCompat.getColor(context,R.color.colorPrimary))
+                /*val p = convertDpToPixel(12, context)
+                setPadding(p, paddingTop, p, paddingBottom)*/
                 ViewCompat.setTooltipText(this, resources.getString(R.string.action_view))
             })
         return v
@@ -107,11 +95,8 @@ class PartitionsStructureTreeView(
     override fun createController(
         ld: MutableLiveData<DataModel<PartitionStructureTreeViewNode>>,
         scope: CoroutineScope
-    ): TreeController<PartitionStructureTreeViewNode> {
-        val lc = PartitionStructureTreeController(ld,scope)
-        controller = lc
-        return lc
-    }
+    ): TreeController<PartitionStructureTreeViewNode> =
+                    PartitionStructureTreeController(ld,scope)
 
     override fun createContextActionMenu(mode: ActionMode,inflater: MenuInflater, menu: Menu) {
         isEnabled =false

@@ -28,6 +28,7 @@ import com.redocs.archive.framework.EventBus
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.utils.*
 import com.redocs.archive.ui.view.button.ImageButton
+import com.redocs.archive.ui.view.button.ImageButton48
 import java.util.*
 
 
@@ -54,6 +55,7 @@ class DocumentDetaileView(
             addView(
                 ProgressBar(context).apply {
                     this.isIndeterminate = true
+
                 })
             addView(View(context))
         } else {
@@ -198,7 +200,7 @@ class DocumentDetaileView(
                             )
 
                             addView(
-                                ImageButton(context).apply {
+                                ImageButton48(context).apply {
 
                                     setIcon(android.R.drawable.ic_media_play, Color.WHITE)
                                     ViewCompat.setTooltipText(

@@ -4,9 +4,11 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Handler
+import android.util.Log
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
@@ -132,7 +134,7 @@ abstract class TreeView<T : TreeViewNode>(
         private val context: Context,
         private val tree: TreeView<T>,
         private val controller: TreeController<T>,
-        lm: LiveData<DataModel<T>>
+        ld: LiveData<DataModel<T>>
 
     ) : RecyclerView.Adapter<TreeView.Adapter.TreeItemViewHolder>() {
         var selected: T?
@@ -157,27 +159,30 @@ abstract class TreeView<T : TreeViewNode>(
         private var firstRun = true
 
         init {
-            lm.observe(context as LifecycleOwner, Observer<DataModel<T>> {
-                var submit = true
-                if (firstRun) {
-                    firstRun = false
-                    if (it.data.isEmpty()) {
-                        Handler().post { reload() }
-                        submit = false
-                    }
-                    else{
-                        // Scroll to remembered position
-                        Handler().post {
-                            if(it.firstItemPosition > 0)
-                                tree.scrollToPosition(it.firstItemPosition)
+            with(ld){
+                removeObservers(context as LifecycleOwner)
+                observe(context as LifecycleOwner, Observer<DataModel<T>> {
+                    var submit = true
+                    if (firstRun) {
+                        firstRun = false
+                        if (it.data.isEmpty()) {
+                            Handler().post { reload() }
+                            submit = false
+                        }
+                        else{
+                            // Scroll to remembered position
+                            Handler().post {
+                                if(it.firstItemPosition > 0)
+                                    tree.scrollToPosition(it.firstItemPosition)
+                            }
                         }
                     }
-                }
-                if(submit){
-                    model = it
-                    submitOperation(model.operation)
-                }
-            })
+                    if(submit){
+                        model = it
+                        submitOperation(model.operation)
+                    }
+                })
+            }
         }
 
         private fun submitOperation(op: Operation){
@@ -204,8 +209,14 @@ abstract class TreeView<T : TreeViewNode>(
             (holder.itemView as TreeNodeView).apply {
 
                 text = node.text
-                image = tree.getNodeImageId(node)
                 level = node.level
+
+                if(node.loading)
+                    isLoading = true
+                else {
+                    isLoading = false
+                    image = tree.getNodeImageId(node)
+                }
 
                 if(prevSelected == this)
                     prevSelected = null
@@ -248,7 +259,6 @@ abstract class TreeView<T : TreeViewNode>(
         private fun selectNode(node: T, nodeView: TreeNodeView, pos: Int) {
             //Log.d("#ListAdapter","select node prev: ${prevSelected?.text}")
             if (prevSelected !== nodeView) {
-                prevSelected?.isActivated = false
                 controller.selectedPosition = pos
                 selectionListener(if (pos > -1) node else null)
             }
@@ -293,30 +303,35 @@ abstract class TreeView<T : TreeViewNode>(
         private object Conf {
             val textTypeFace = Typeface.NORMAL
             val backgroundColor = Color.TRANSPARENT
-            val levelIndent = 40
+            val levelIndent = 24
             @ColorRes
             var textColor = R.color.colorPrimaryDark
-            val textSize = 20.0F
+            //val textSize = 20.0F
             @ColorRes
             var selectedBgColor = R.color.colorPrimary
             val selectedTextColor = Color.WHITE
             val selectedTextTypeface = Typeface.BOLD
         }
 
-        private var container: LinearLayoutCompat
         private val padding: Int = convertDpToPixel(5, context)
+        private val dp48: Int = convertDpToPixel(48, context)
 
         private val imageView = ImageView(context).apply {
             layoutParams = LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                dp48,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            scaleType = ImageView.ScaleType.CENTER
         }
 
         private val textView = TextView(context).apply {
+            layoutParams = LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                1F
+            )
             gravity = Gravity.CENTER_VERTICAL
-            textSize = Conf.textSize
+            //textSize = Conf.textSize
             setPadding(padding, 0, padding, 0)
             setTextColor(Conf.textColor)
         }
@@ -334,12 +349,29 @@ abstract class TreeView<T : TreeViewNode>(
 
         var level: Int = 0
             set(value) {
+                field = value
                 imageView.layoutParams = LayoutParams(
                     imageView.layoutParams.width,
                     imageView.layoutParams.height
                 ).apply {
                     leftMargin = Conf.levelIndent * value
                 }
+            }
+
+        var isLoading: Boolean = false
+            set(value){
+                removeViewAt(0)
+                if(value)
+                    addView(ProgressBar(context, null,android.R.attr.progressBarStyleSmall).apply{
+                            this.isIndeterminate = true
+                            layoutParams = LayoutParams(dp48,dp48).apply {
+                                leftMargin = Conf.levelIndent * level
+                            }
+
+                        },0)
+                else
+                    addView(imageView,0)
+
             }
 
         init {
@@ -352,19 +384,8 @@ abstract class TreeView<T : TreeViewNode>(
                 Conf.selectedBgColor = ContextCompat.getColor(context, Conf.selectedBgColor)
                 Conf.textColor = ContextCompat.getColor(context, Conf.textColor)
             }
-
-            container = LinearLayoutCompat(context).apply {
-                layoutParams = LinearLayoutCompat.LayoutParams(
-                    0,
-                    FrameLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    weight = 0.8F
-                }
-            }
-
-            container.addView(imageView)
-            container.addView(textView)
-            addView(container)
+            addView(imageView)
+            addView(textView)
         }
 
         override fun setEnabled(enabled: Boolean) {
@@ -420,7 +441,7 @@ abstract class TreeView<T : TreeViewNode>(
         val children: MutableList<TreeNodeStub> = mutableListOf<TreeNodeStub>()
     ) : TreeViewNodeBase(id,text,true,0,false)
 
-    open protected class TreeController<T : TreeViewNode>(
+    protected open class TreeController<T : TreeViewNode>(
         //private val repo: PartitionStructureRepository<out TreeNode>,
         private val liveModel: MutableLiveData<DataModel<T>>,
         private val scope: CoroutineScope
@@ -436,7 +457,10 @@ abstract class TreeView<T : TreeViewNode>(
 
         var selectedPosition = ld.selectedPosition
             set(value) {
+                val pp = field
                 field = value
+                if(pp > -1)
+                    notifyObservers(UpdateOperation(pp))
                 notifyObservers(UpdateOperation(value))
             }
 

@@ -10,21 +10,22 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.DrawableCompat
 import com.redocs.archive.ui.utils.convertDpToPixel
 
-class ImageButton(
-    context: Context
+open class ImageButton(
+    context: Context,
+    size: Int
 ) : ImageButton(context){
 
     init {
         addRipple()
-        val p = convertDpToPixel(48, context)
+        val p = convertDpToPixel(size, context)
         layoutParams = ViewGroup.LayoutParams(p,p)
         scaleType = ImageView.ScaleType.CENTER
     }
 
-    fun setIcon(@DrawableRes id: Int, tintColor: Int) {
+    fun setIcon(@DrawableRes drawable: Int, tintColor: Int) {
         setImageDrawable(
             AppCompatResources.getDrawable(
-                context,id
+                context,drawable
             )?.apply {
                 DrawableCompat.setTint(
                     this, tintColor)
@@ -37,3 +38,7 @@ class ImageButton(
         setBackgroundResource(resourceId)
     }
 }
+
+class ImageButton48(
+    context: Context
+) : com.redocs.archive.ui.view.button.ImageButton(context,48)

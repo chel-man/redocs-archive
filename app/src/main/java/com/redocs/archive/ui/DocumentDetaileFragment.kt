@@ -62,9 +62,12 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
             }
         } else {
             when {
-                vm.documentId == Long.MIN_VALUE ->
-                    (view as ViewGroup).removeViewAt(0)
 
+                vm.documentId == Long.MIN_VALUE -> {
+                    try {
+                        (view as ViewGroup).removeViewAt(0)
+                    }catch (npe: java.lang.NullPointerException){}
+                }
                 doc?.id != vm.documentId ->
                     startLoadDocument()
                 else ->
@@ -94,15 +97,18 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
     }
 
     private fun startObservingModel() {
-        vm.document.observe(this, androidx.lifecycle.Observer {
-            Log.d("#DF", "model changed")
-            it as DocumentModel
-            it as DocumentModel
-            if (it.isStub)
-                createView(getController(), it)
-            else
-                documentDetaileView.update(it)
-        })
+        with(vm.document) {
+            removeObservers(this@DocumentDetaileFragment)
+            observe(this@DocumentDetaileFragment, androidx.lifecycle.Observer {
+                Log.d("#DF", "model changed")
+                it as DocumentModel
+                it as DocumentModel
+                if (it.isStub)
+                    createView(getController(), it)
+                else
+                    documentDetaileView.update(it)
+            })
+        }
     }
 
     private fun createView(controller: Controller, dm: DocumentModel) {
