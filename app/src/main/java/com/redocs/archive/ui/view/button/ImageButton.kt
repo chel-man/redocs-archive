@@ -1,13 +1,13 @@
 package com.redocs.archive.ui.view.button
 
 import android.content.Context
-import android.util.TypedValue
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.DrawableCompat
+import com.redocs.archive.addRipple
 import com.redocs.archive.ui.utils.convertDpToPixel
 
 open class ImageButton(
@@ -31,11 +31,6 @@ open class ImageButton(
                     this, tintColor)
             }
         )
-    }
-
-    private fun addRipple() = with(TypedValue()) {
-        context.theme.resolveAttribute(android.R.attr.selectableItemBackground, this, true)
-        setBackgroundResource(resourceId)
     }
 }
 

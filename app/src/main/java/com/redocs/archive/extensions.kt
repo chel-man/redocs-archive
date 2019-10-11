@@ -3,11 +3,14 @@ package com.redocs.archive
 import android.content.Context
 import android.graphics.PorterDuff
 import android.os.Handler
+import android.util.TypedValue
 import android.view.Menu
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import androidx.annotation.ColorInt
+import androidx.annotation.ColorRes
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 
 fun Menu.setItemEnabled(id: Int, enabled: Boolean, @ColorInt colorId: Int) {
@@ -55,4 +58,17 @@ fun Any.asLongOrOriginal(): Any {
     if((this as? Int) != null) return (this as Int).toLong()
     return this
 
+}
+
+fun View.setBackgroundColorRes(@ColorRes color: Int){
+    setBackgroundColor(
+        ContextCompat.getColor(
+            context, color
+        )
+    )
+}
+
+fun View.addRipple() = with(TypedValue()) {
+    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, this, true)
+    setBackgroundResource(resourceId)
 }

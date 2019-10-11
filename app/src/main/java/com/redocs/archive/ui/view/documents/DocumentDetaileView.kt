@@ -29,6 +29,7 @@ import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.utils.*
 import com.redocs.archive.ui.view.button.ImageButton
 import com.redocs.archive.ui.view.button.ImageButton48
+import com.redocs.archive.ui.view.panels.StackPanel
 import java.util.*
 
 
@@ -57,9 +58,9 @@ class DocumentDetaileView(
                     this.isIndeterminate = true
 
                 })
-            addView(View(context))
+            //addView(View(context))
         } else {
-            addView(
+            /*addView(
                 FieldListView(
                     context,
                     dm.fields,
@@ -76,7 +77,25 @@ class DocumentDetaileView(
                         dm.files,
                         dm.filesCount
                     )
-                )
+                )*/
+            addView(
+                StackPanel(context).apply {
+                    addPanel("Поля",FieldListView(
+                        context,
+                        dm.fields,
+                        ::onFieldLongClick
+                    ))
+
+                    if(dm.filesCount > 0)
+                        addPanel("Files ( ${dm.filesCount} )",
+                            FileListView(
+                                context,
+                                controller,
+                                dm.files,
+                                dm.filesCount
+                        ))
+                }
+            )
         }
     }
 

@@ -1,18 +1,22 @@
 package com.redocs.archive.ui
 
 import android.content.Context
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.redocs.archive.data.files.DataSource
 import com.redocs.archive.data.files.Repository
 import com.redocs.archive.ui.utils.ActivablePanel
 import com.redocs.archive.ui.view.list.ListView
 import com.redocs.archive.ui.view.list.ListRow
+import com.redocs.archive.ui.view.panels.StackPanel
 import kotlinx.coroutines.delay
 
-class FilesFragment() : Fragment(), /*ContextActionBridge,*/
-    ActivablePanel {
+class FilesFragment() : Fragment(), ActivablePanel {
 
-    //override lateinit var contextActionModeController: ContextActionModeController
     override var isActive = false
 
     private lateinit var listView: ListView<ListRow>
@@ -24,19 +28,18 @@ class FilesFragment() : Fragment(), /*ContextActionBridge,*/
         this.repo = Repository(ds)
     }
 
-    /*override fun onCreateView(
+    override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
 
-        listView = ListView<ListRow>(context as Context,vm).apply {
-            setAdapter(ListAdapter(context))
-            setDataSource(FileListDataSource())
-            //refresh()
+        return StackPanel(context).apply {
+            addPanel("Panel 1", TextView(context).apply { text = "Text Panel 1" })
+            addPanel("Panel 2", TextView(context).apply { text = "Text Panel 2" })
+            addPanel("Panel 3", TextView(context).apply { text = "Text Panel 3" })
         }
-        return listView
-    }*/
+    }
 
     override fun activate() {
         /*if(!isActive) {
