@@ -1,30 +1,28 @@
 package com.redocs.archive.ui.view.panels
 
 import android.content.Context
-import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.content.ContextCompat
-import androidx.core.view.setPadding
-import com.google.android.material.button.MaterialButton
 import com.redocs.archive.R
 import com.redocs.archive.addRipple
 import com.redocs.archive.ui.utils.ActivablePanel
 import com.redocs.archive.ui.utils.convertDpToPixel
 
 class StackPanel(
-    context: Context?
+    context: Context?,
+    private var activePosition: Int = 0
 ) : LinearLayoutCompat(
     context
 ){
+
+    var activationListener: ((pos: Int)->Unit)? = null
+
     private val titles: LinearLayoutCompat
-    private var activePosition = 0
     private val panels = mutableListOf<Panel>()
     private val dp48 = convertDpToPixel(48, context as Context)
 
@@ -63,7 +61,7 @@ class StackPanel(
             1F
         )
 
-        if(position == 0)
+        if(position == activePosition)
             addView(content,0)
         else{
             titles.addView(
@@ -77,6 +75,7 @@ class StackPanel(
                     typeface = Typeface.DEFAULT_BOLD
                     gravity = Gravity.CENTER_VERTICAL or Gravity.CENTER_HORIZONTAL
                     addRipple()
+                    setOnTouchListener { v, event -> !this@StackPanel.isEnabled }
                     setOnClickListener {
                         activatePanel(position, it as TextView)
                     }
@@ -108,7 +107,7 @@ class StackPanel(
         val content = panels[position].content
         addView(content,0)
         (content as? ActivablePanel)?.activate()
-
+        activationListener?.invoke(position)
     }
 
     private data class Panel(

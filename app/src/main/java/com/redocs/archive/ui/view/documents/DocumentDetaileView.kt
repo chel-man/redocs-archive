@@ -1,34 +1,27 @@
 package com.redocs.archive.ui.view.documents
 
 import android.content.Context
-import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
-import android.util.TypedValue
+import android.util.AttributeSet
 import android.view.*
 import android.view.Gravity.CENTER
 import android.view.Gravity.END
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.cardview.widget.CardView
-import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.DrawableCompat
-import androidx.core.view.ViewCompat
 import androidx.core.view.setMargins
 import androidx.core.view.setPadding
-import com.google.android.material.button.MaterialButton
 import com.redocs.archive.R
-import com.redocs.archive.asLongOrNull
-import com.redocs.archive.domain.document.DataType
 import com.redocs.archive.domain.document.FieldType
+import com.redocs.archive.dp48pixels
 import com.redocs.archive.framework.EventBus
+import com.redocs.archive.getColor
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.utils.*
-import com.redocs.archive.ui.view.button.ImageButton
-import com.redocs.archive.ui.view.button.ImageButton48
 import com.redocs.archive.ui.view.panels.StackPanel
 import java.util.*
 
@@ -43,14 +36,16 @@ class DocumentDetaileView(
     override val lockContent = false
 
     private var actionMode: ActionMode? = null
+    private lateinit var panel: StackPanel
 
     init {
-        layoutParams = LinearLayoutCompat.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
+        layoutParams = LayoutParams(
+            LayoutParams.MATCH_PARENT,
+            LayoutParams.MATCH_PARENT
         ).apply {
-            setMargins(15)
+            setMargins(2)
         }
+
         orientation = VERTICAL
         if (dm.isStub) {
             addView(
@@ -58,75 +53,48 @@ class DocumentDetaileView(
                     this.isIndeterminate = true
 
                 })
-            //addView(View(context))
         } else {
-            /*addView(
-                FieldListView(
-                    context,
-                    dm.fields,
-                    ::onFieldLongClick
-                )
-            )
-            if (dm.filesCount == 0)
-                addView(View(context))
-            else
-                addView(
-                    FileListView(
-                        context,
-                        controller,
-                        dm.files,
-                        dm.filesCount
-                    )
-                )*/
-            addView(
-                StackPanel(context).apply {
-                    addPanel("Поля",FieldListView(
-                        context,
-                        dm.fields,
-                        ::onFieldLongClick
-                    ))
-
-                    if(dm.filesCount > 0)
-                        addPanel("Files ( ${dm.filesCount} )",
-                            FileListView(
-                                context,
-                                controller,
-                                dm.files,
-                                dm.filesCount
-                        ))
-                }
-            )
+            panel = createStackPanel()
+            addView(panel)
         }
     }
 
     fun update(model: DocumentModel) {
 
-        if (model.fields != dm.fields) {
-            removeViewAt(0)
-            addView(
-                FieldListView(
-                    context,
-                    model.fields,
-                    ::onFieldLongClick
-                ), 0
-            )
+        removeViewAt(0)
+        dm = model
+        panel = createStackPanel()
+        addView(panel)
+        checkActionMode()
 
-        }
-        if (model.filesCount > 0) {
-            if (dm.isStub || dm.files != model.files) {
-                removeViewAt(1)
-                addView(
-                    FileListView(
-                        context,
-                        controller,
-                        model.files,
-                        model.filesCount
-                    ), 1
+    }
+
+    private fun createStackPanel(): StackPanel {
+
+        return StackPanel(context, dm.activePanelPos).apply {
+
+            addPanel("Поля",FieldListView(
+                context,
+                dm.fields,
+                ::onFieldLongClick
+            ))
+
+            if(dm.filesCount > 0) {
+                val fl = FileListView(context)
+                fl.fiels = dm.files
+                addPanel(
+                    "Files ( ${dm.filesCount} )", fl
                 )
             }
+            activationListener = { pos ->
+
+                isEnabled = false
+                if(pos == 0)
+                    controller.showFields()
+                else
+                    controller.showFiles()
+            }
         }
-        dm = model
-        checkActionMode()
 
     }
 
@@ -134,6 +102,7 @@ class DocumentDetaileView(
         if (dm.isDirty) {
             if (actionMode == null)
                 EventBus.publish(ContextActionRequestEvent(this))
+            panel.isEnabled = false
         } else
             actionMode?.finish()
 
@@ -159,96 +128,23 @@ class DocumentDetaileView(
         return true
     }
 
-
     private class FileListView(
-        context: Context,
-        controller: Controller,
-        files: Collection<DocumentModel.FileModel>,
-        filesCount: Int
-    ) : CardView(
+        context: Context
+    ) : LinearLayoutCompat(
         context
     ) {
 
-        init {
-            layoutParams = LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(5)
-                radius = convertDpToPixel(17, context).toFloat()
-            }
-            //preventCornerOverlap = true
-            cardElevation = convertDpToPixel(10, context).toFloat()
+        var fiels: Collection<DocumentModel.FileModel> = emptyList()
+            set(value){
+                if(!value.isEmpty()) {
+                    val tl = TableLayout(context).apply {
+                        setColumnStretchable(1, true)
+                        showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE or
+                                LinearLayout.SHOW_DIVIDER_BEGINNING or
+                                LinearLayout.SHOW_DIVIDER_END
+                        dividerDrawable = ColorDrawable(Color.BLACK)
 
-            addView(
-                LinearLayoutCompat(context).apply {
-                    layoutParams = LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                    )
-                    orientation = VERTICAL
-
-                    val parent = this
-
-                    addView(
-                        LinearLayoutCompat(context).apply {
-                            layoutParams = LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.WRAP_CONTENT
-                            ).apply {
-                                setBackgroundColor(
-                                    ContextCompat.getColor(
-                                        context, R.color.colorPrimary
-                                    )
-                                )
-                            }
-                            orientation = HORIZONTAL
-
-                            addView(
-                                TextView(context).apply {
-                                    text = "Files ($filesCount)"
-                                    setTextColor(Color.WHITE)
-                                    gravity = Gravity.CENTER_VERTICAL
-                                    setPadding(35, 0, 0, 0)
-                                    layoutParams = LinearLayoutCompat.LayoutParams(
-                                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        1F
-                                    )
-                                }
-                            )
-
-                            addView(
-                                ImageButton48(context).apply {
-
-                                    setIcon(android.R.drawable.ic_media_play, Color.WHITE)
-                                    ViewCompat.setTooltipText(
-                                        this,
-                                        resources.getString(R.string.action_view)
-                                    )
-                                    setOnClickListener {
-                                        it.isEnabled = false
-                                        loadList(
-                                            context,
-                                            parent,
-                                            controller,
-                                            filesCount != files.size
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    )
-                    if (!files.isEmpty()) {
-                        val tl = TableLayout(context).apply {
-                            setColumnStretchable(1, true)
-                            showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE or
-                                    LinearLayout.SHOW_DIVIDER_BEGINNING or
-                                    LinearLayout.SHOW_DIVIDER_END
-                            //dividerDrawable =
-                        }
-
-                        tl.addView(
+                        addView(
                             FileListHeader(
                                 context
                             )
@@ -256,34 +152,29 @@ class DocumentDetaileView(
 
                         var colored = false
 
-                        for (r in files) {
-                            tl.addView(
+                        for (r in value) {
+                            addView(
                                 r.toView(context).apply {
                                     setBackgroundColor(if (colored) Color.LTGRAY else Color.TRANSPARENT)
                                 })
                             colored = !colored
                         }
-                        addView(tl)
                     }
-                }
-            )
 
+                    removeViewAt(0)
+                    addView(tl)
+                }
         }
 
-        private fun loadList(
-            context: Context,
-            container: ViewGroup,
-            controller: Controller,
-            closed: Boolean
-        ) {
-            if (closed) {
-                container.addView(
-                    ProgressBar(context).apply {
-                        this.isIndeterminate = true
-                    })
-                controller.showFiles()
-            } else
-                controller.hideFiles()
+        init {
+            layoutParams = LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT
+            )
+            addView(ProgressBar(context).apply {
+                isIndeterminate = true
+            })
+
         }
 
         private class FileListHeader(
@@ -308,7 +199,6 @@ class DocumentDetaileView(
                         gravity = CENTER
                     })
 
-                //setPadding(4)
             }
 
         }
@@ -334,8 +224,6 @@ class DocumentDetaileView(
                         gravity = END
                     })
 
-                //setPadding(14)
-
             }
         }
 
@@ -343,12 +231,11 @@ class DocumentDetaileView(
             FileView(context, id, name, size)
     }
 
-
     private class FieldListView(
         context: Context,
         fields: Collection<DocumentModel.FieldModel<*>>,
         longClickListener: (Int) -> Boolean
-    ) : CardView(
+    ) : ScrollView(
         context
     ) {
 
@@ -356,13 +243,23 @@ class DocumentDetaileView(
 
             layoutParams = LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(5)
-                radius = convertDpToPixel(17, context).toFloat()
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+
+            val card = CardView(context).apply {
+                preventCornerOverlap = true
+                cardElevation = convertDpToPixel(10, context).toFloat()
+
+                layoutParams = LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(5)
+                    radius = convertDpToPixel(17, context).toFloat()
+                }
+                preventCornerOverlap = true
+                cardElevation = convertDpToPixel(10, context).toFloat()
             }
-            preventCornerOverlap = true
-            cardElevation = convertDpToPixel(10, context).toFloat()
 
             val grid = TableLayout(context).apply {
                 setColumnStretchable(1, true)
@@ -372,7 +269,9 @@ class DocumentDetaileView(
                 fv.longClickListener = longClickListener
                 grid.addView(fv)
             }
-            addView(grid)
+
+            card.addView(grid)
+            addView(card)
         }
 
         fun allowClose() = true
@@ -435,13 +334,28 @@ class DocumentDetaileView(
             var longClickListener: (Int) -> Boolean = { false }
 
             init {
+                minimumHeight = dp48pixels()
+                background = GradientDrawable().apply {
+                    setColor(Color.TRANSPARENT)
+                    setStroke(1, getColor(R.color.colorPrimaryDark))
+                }
 
                 addView(
                     TextView(context).apply {
                         text = "$title : "
-                        gravity = Gravity.END
+                        gravity = Gravity.END or Gravity.CENTER_VERTICAL
                     })
+
+                addView(View(context).apply {
+                    layoutParams = LayoutParams(
+                        2,
+                        LayoutParams.MATCH_PARENT
+                    )
+                    setBackgroundColor(getColor(R.color.colorPrimaryDark))
+                })
+
                 addView(
+
                     createValueView(format(value), isDirty).apply {
                         layoutParams = generateDefaultLayoutParams().apply {
                             setMargins(0, 0, 10, 0)
@@ -450,8 +364,16 @@ class DocumentDetaileView(
                         setOnLongClickListener {
                             longClickListener(position)
                         }
-                    })
-
+                        setPadding(10)
+                    }
+                )
+                /*addView(View(context).apply {
+                    layoutParams = LayoutParams(
+                        2,
+                        LayoutParams.MATCH_PARENT
+                    )
+                    setBackgroundColor(Color.BLACK)
+                })*/
                 setPadding(4)
             }
 
@@ -463,11 +385,11 @@ class DocumentDetaileView(
                 TextView(context).apply {
                     text = value
                     gravity = getAlignment()
-                    background = GradientDrawable().apply {
+                    /*background = GradientDrawable().apply {
                         setColor(if (isDirty) Color.YELLOW else Color.TRANSPARENT)
                         cornerRadius = 5f
                         setStroke(1, Color.BLACK)
-                    }
+                    }*/
                 }
 
         }

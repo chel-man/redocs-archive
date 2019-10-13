@@ -12,6 +12,7 @@ import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.redocs.archive.ui.utils.convertDpToPixel
 
 fun Menu.setItemEnabled(id: Int, enabled: Boolean, @ColorInt colorId: Int) {
 
@@ -60,15 +61,15 @@ fun Any.asLongOrOriginal(): Any {
 
 }
 
-fun View.setBackgroundColorRes(@ColorRes color: Int){
-    setBackgroundColor(
-        ContextCompat.getColor(
+fun View.getColor(@ColorRes color: Int): Int {
+    return ContextCompat.getColor(
             context, color
         )
-    )
 }
 
 fun View.addRipple() = with(TypedValue()) {
     context.theme.resolveAttribute(android.R.attr.selectableItemBackground, this, true)
     setBackgroundResource(resourceId)
 }
+
+fun View.dp48pixels() = convertDpToPixel(48,context)

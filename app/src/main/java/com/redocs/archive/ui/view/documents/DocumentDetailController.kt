@@ -37,16 +37,21 @@ class Controller(
     }
 
     fun showFiles() {
-        scope.launch {
-            val d = documentLive.value as DocumentModel
-            val files = filesRepository.list(d.id).map{ it.toModel()}
-            documentLive.value = d.copy(files = files)
-        }
+
+        val d = documentLive.value as DocumentModel
+        if(d.files.isEmpty())
+            scope.launch {
+                val files = filesRepository.list(d.id).map{ it.toModel()}
+                documentLive.value = d.copy(files = files, activePanelPos = 1)
+            }
+        else
+            documentLive.value = d.copy(activePanelPos = 1)
+
     }
 
-    fun hideFiles() {
+    fun showFields() {
         val d = documentLive.value as DocumentModel
-        documentLive.value = d.copy(files = emptyList())
+        documentLive.value = d.copy(activePanelPos = 0)
     }
 
     private fun <T> setFieldValue(position: Int, v: T?) {
@@ -60,10 +65,12 @@ class Controller(
 
     fun undo() {
         val d = documentLive.value as DocumentModel
-        val l = mutableListOf<DocumentModel.FieldModel<*>>()
+        val fls = mutableListOf<DocumentModel.FieldModel<*>>()
         for(f in d.fields)
-            l += f.undo()
-        documentLive.value = d.copy(fields = l.toList())
+            fls += f.undo()
+        for(fl in d.files)
+            fl.undo()
+        documentLive.value = d.copy(fields = fls.toList(), files = d.files)
     }
 
     fun editField(context: Context, field: DocumentModel.FieldModel<*>, position: Int) {
@@ -127,7 +134,8 @@ class Controller(
             id,
             name,
             filesCount,
-            fields.map { it.toModel() })
+            fields.map { it.toModel() }
+        )
 
     private inline fun File.toModel() =
         DocumentModel.FileModel(id, name, size)

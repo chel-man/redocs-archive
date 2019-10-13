@@ -92,7 +92,7 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
     }
 
     private fun startLoadDocument() {
-        vm.document.value = DocumentModel(-vm.documentId, "")
+        vm.document.value = DocumentModel(-vm.documentId, "", activePanelPos = 0)
         getController().load()
     }
 
@@ -132,7 +132,7 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? =
-        ScrollView(context).apply {
+        LinearLayoutCompat(context).apply {
             layoutParams = LinearLayoutCompat.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT

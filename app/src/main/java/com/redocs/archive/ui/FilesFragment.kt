@@ -6,6 +6,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.appcompat.widget.LinearLayoutCompat
+import androidx.core.view.setMargins
 import androidx.fragment.app.Fragment
 import com.redocs.archive.data.files.DataSource
 import com.redocs.archive.data.files.Repository
@@ -35,7 +37,21 @@ class FilesFragment() : Fragment(), ActivablePanel {
     ): View? {
 
         return StackPanel(context).apply {
-            addPanel("Panel 1", TextView(context).apply { text = "Text Panel 1" })
+            addPanel("Panel 1",
+                LinearLayoutCompat(context).apply {
+                    layoutParams = LinearLayoutCompat.LayoutParams(
+                        LinearLayoutCompat.LayoutParams.MATCH_PARENT,
+                        LinearLayoutCompat.LayoutParams.MATCH_PARENT
+                    ).apply {
+                        setMargins(15)
+                    }
+                    orientation = LinearLayoutCompat.VERTICAL
+
+                    addView(
+                        TextView(context).apply { text = "Text Panel 1" }
+                    )
+                }
+            )
             addPanel("Panel 2", TextView(context).apply { text = "Text Panel 2" })
             addPanel("Panel 3", TextView(context).apply { text = "Text Panel 3" })
         }

@@ -1,6 +1,5 @@
 package com.redocs.archive.ui.view.documents
 
-import com.redocs.archive.asLongOrOriginal
 import com.redocs.archive.domain.document.FieldType
 import java.util.*
 
@@ -11,7 +10,9 @@ data class DocumentModel(
     val name: String,
     val filesCount: Int = 0,
     val fields: List<FieldModel<*>> = emptyList(),
-    val files: Collection<FileModel> = emptyList()
+    val files: Collection<FileModel> = emptyList(),
+    val activePanelPos: Int = 0
+
 ) : DocumentModelInterface {
 
     val isStub: Boolean get() = id < 0
@@ -19,6 +20,10 @@ data class DocumentModel(
     val isDirty: Boolean
         get() {
             for (f in fields) {
+                if (f.isDirty)
+                    return true
+            }
+            for (f in files) {
                 if (f.isDirty)
                     return true
             }
@@ -142,11 +147,16 @@ data class DocumentModel(
 
     }
 
-    data class FileModel(
+    class FileModel(
         val id: Long,
-        val name: String,
+        var name: String,
         val size: Long
     ) {
+        val isDirty: Boolean
+            get() = name != initName
+
+        private val initName = name
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (javaClass != other?.javaClass) return false
@@ -160,6 +170,10 @@ data class DocumentModel(
 
         override fun hashCode(): Int {
             return id.hashCode()
+        }
+
+        fun undo() {
+            name = initName
         }
     }
 
