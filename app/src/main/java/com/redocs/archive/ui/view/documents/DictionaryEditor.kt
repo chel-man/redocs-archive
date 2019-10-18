@@ -12,6 +12,13 @@ class DictionaryEditor(
     CustomEditor<DocumentModel.DictionaryEntry>
 {
     override val value: DocumentModel.DictionaryEntry?
-        get() = selected
+        get() {
+
+            try {
+                return selected
+            }catch (ex: ArrayIndexOutOfBoundsException){
+                return null
+            }
+        }
 
 }

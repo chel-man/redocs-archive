@@ -19,7 +19,7 @@ open class FilteredList<T> (
 
     var selectionListener: (()->Unit)? = null
     val selected: T?
-        get() = (model.data as List<T>)[position]
+        get() = filtered[position]
 
     var text: String? = null
     var model = SimpleList.ListModel<T>(emptyList())
@@ -85,18 +85,21 @@ open class FilteredList<T> (
                     this@FilteredList.selectionListener?.invoke()
                 }
 
-                Handler().post {
-                    this.model = model
-                    if(value != null)
-                        setFilter(value.toString())
-                }
             }
 
             removeViewAt(1)
             addView(list)
         }
-        else
-            list?.model = model
+        position = -1
+
+        Handler().post {
+            filtered.clear()
+            filtered += model.data
+            if(value != null)
+                setFilter(value.toString())
+            else
+                list?.model = model
+        }
 
     }
 

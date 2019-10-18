@@ -21,27 +21,14 @@
 
     <androidx.appcompat.widget.LinearLayoutCompat
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="wrap_content"
+            android:background="@color/colorPrimary">
 
-        <ImageButton
+        <ImageView
                 android:id="@+id/imageButton"
                 android:scaleType="centerInside"
-                android:src="@android:drawable/btn_star"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginLeft="40dp"
-                android:adjustViewBounds="true"/>
-        <TextView
-                android:id="@+id/text"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:text="@string/types_panel"
-                android:textAlignment="center"
-                android:gravity="center_vertical" android:textStyle="bold"/>
+                app:srcCompat="@drawable/ic_add_white_24_dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"/>
     </androidx.appcompat.widget.LinearLayoutCompat>
-    <androidx.appcompat.widget.LinearLayoutCompat
-            android:id="@+id/backLayout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#98696565"/>
 </FrameLayout>

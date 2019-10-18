@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
+import androidx.annotation.ColorInt
 import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.DrawableCompat
@@ -22,7 +23,7 @@ open class ImageButton(
         scaleType = ImageView.ScaleType.CENTER
     }
 
-    fun setIcon(@DrawableRes drawable: Int, tintColor: Int) {
+    fun setIcon(@DrawableRes drawable: Int, @ColorInt tintColor: Int) {
         setImageDrawable(
             AppCompatResources.getDrawable(
                 context,drawable

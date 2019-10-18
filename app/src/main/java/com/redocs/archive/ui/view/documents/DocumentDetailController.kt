@@ -1,6 +1,7 @@
 package com.redocs.archive.ui.view.documents
 
 import android.content.Context
+import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
@@ -95,6 +96,10 @@ class Controller(
 
     }
 
+    fun clearFieldValue(position: Int) {
+        setFieldValue(position, null)
+    }
+
     private fun createFieldEditor(context: Context, field: DocumentModel.FieldModel<*>): View {
 
         val value = field.value
@@ -169,4 +174,5 @@ class Controller(
             return l[pos].toModel()
         throw NotFoundException(de.id,"dictionary entry ${de.id} not found")
     }
+
 }

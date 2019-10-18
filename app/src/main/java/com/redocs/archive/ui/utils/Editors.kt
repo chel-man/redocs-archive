@@ -4,6 +4,8 @@ import android.content.Context
 import android.text.InputType
 import android.widget.DatePicker
 import android.widget.EditText
+import com.redocs.archive.asDoubleOrNull
+import com.redocs.archive.asLongOrNull
 import com.redocs.archive.setFocusAndShowKeyboard
 import java.util.*
 
@@ -42,7 +44,7 @@ class IntegerCustomEditor(
 ) : AbstractCustomEditor<Long>(context,value){
 
     override val value: Long?
-        get()  = text?.toString()?.toLong()
+        get()  = text?.toString()?.toLongOrNull()
 
     //override fun format(v: Long?): String = (v ?: "").toString()
 
@@ -58,7 +60,7 @@ class DecimalCustomEditor(
 ) : AbstractCustomEditor<Double>(context,value){
 
     override val value: Double?
-        get()  = text?.toString()?.toDouble()
+        get()  = text?.toString()?.toDoubleOrNull()
 
     //override fun format(v: Long?): String = (v ?: "").toString()
 

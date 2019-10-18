@@ -1,13 +1,20 @@
 package com.redocs.archive
 
 import android.content.Context
+import android.graphics.Paint
 import android.graphics.PorterDuff
+import android.graphics.Typeface
 import android.os.Handler
+import android.text.Layout
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.Menu
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.core.content.ContextCompat
@@ -44,6 +51,14 @@ fun EditText.setFocusAndShowKeyboard(){
         (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
             .showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
     },200)
+}
+
+fun TextView.textUnderline() {
+    paintFlags = paintFlags or Paint.UNDERLINE_TEXT_FLAG
+}
+
+fun TextView.textBold() {
+    typeface = Typeface.DEFAULT_BOLD
 }
 
 fun Any.asLongOrNull(): Long? =

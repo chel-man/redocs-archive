@@ -2,26 +2,20 @@ package com.redocs.archive.ui.view.documents
 
 import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
-import android.util.AttributeSet
 import android.view.*
 import android.view.Gravity.CENTER
 import android.view.Gravity.END
 import android.widget.*
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.LinearLayoutCompat
-import androidx.cardview.widget.CardView
 import androidx.core.view.setMargins
 import androidx.core.view.setPadding
-import com.redocs.archive.R
+import com.redocs.archive.*
 import com.redocs.archive.domain.document.FieldType
-import com.redocs.archive.dp48pixels
 import com.redocs.archive.framework.EventBus
-import com.redocs.archive.getColor
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.utils.*
+import com.redocs.archive.ui.view.button.ImageButton48
 import com.redocs.archive.ui.view.panels.StackPanel
 import java.util.*
 
@@ -76,12 +70,13 @@ class DocumentDetaileView(
             addPanel("Поля",FieldListView(
                 context,
                 dm.fields,
-                ::onFieldLongClick
+                ::onFieldLongClick,
+                ::onClearFieldvalue
             ))
 
             if(dm.filesCount > 0) {
                 val fl = FileListView(context)
-                fl.fiels = dm.files
+                fl.files = dm.files
                 addPanel(
                     "Files ( ${dm.filesCount} )", fl
                 )
@@ -96,6 +91,10 @@ class DocumentDetaileView(
             }
         }
 
+    }
+
+    private fun onClearFieldvalue(pos: Int){
+        controller.clearFieldValue(pos)
     }
 
     private fun checkActionMode() {
@@ -134,15 +133,22 @@ class DocumentDetaileView(
         context
     ) {
 
-        var fiels: Collection<DocumentModel.FileModel> = emptyList()
+        var files: Collection<DocumentModel.FileModel> = emptyList()
             set(value){
                 if(!value.isEmpty()) {
                     val tl = TableLayout(context).apply {
+                        setPadding(10,0,10,0)
+
+                        setColumnShrinkable(1, true)
                         setColumnStretchable(1, true)
-                        showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE or
+
+                        /*showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE or
                                 LinearLayout.SHOW_DIVIDER_BEGINNING or
                                 LinearLayout.SHOW_DIVIDER_END
-                        dividerDrawable = ColorDrawable(Color.BLACK)
+                        dividerDrawable = ShapeDrawable(RectShape()).apply {
+                            paint.color = Color.BLACK
+                            bounds = Rect()
+                        }*/
 
                         addView(
                             FileListHeader(
@@ -155,6 +161,7 @@ class DocumentDetaileView(
                         for (r in value) {
                             addView(
                                 r.toView(context).apply {
+                                    minimumHeight = dp48pixels()
                                     setBackgroundColor(if (colored) Color.LTGRAY else Color.TRANSPARENT)
                                 })
                             colored = !colored
@@ -181,8 +188,10 @@ class DocumentDetaileView(
             context: Context
         ) : TableRow(context) {
             init {
-
+                minimumHeight = dp48pixels()
+                gravity = Gravity.CENTER_VERTICAL
                 setBackgroundColor(Color.LTGRAY)
+
                 addView(
                     TextView(context).apply {
                         text = resources.getString(R.string.file_id_title)
@@ -209,7 +218,9 @@ class DocumentDetaileView(
             val name: String,
             val size: Long
         ) : TableRow(context) {
+
             init {
+                gravity = Gravity.CENTER_VERTICAL
                 addView(
                     TextView(context).apply {
                         text = "$fileId"
@@ -222,8 +233,8 @@ class DocumentDetaileView(
                     TextView(context).apply {
                         text = "$size"
                         gravity = END
+                        setPadding(0,0,15,0)
                     })
-
             }
         }
 
@@ -234,7 +245,8 @@ class DocumentDetaileView(
     private class FieldListView(
         context: Context,
         fields: Collection<DocumentModel.FieldModel<*>>,
-        longClickListener: (Int) -> Boolean
+        longClickListener: (Int) -> Boolean,
+        clearValueListener: (Int)->Unit
     ) : ScrollView(
         context
     ) {
@@ -246,7 +258,7 @@ class DocumentDetaileView(
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
 
-            val card = CardView(context).apply {
+            /*val card = CardView(context).apply {
                 preventCornerOverlap = true
                 cardElevation = convertDpToPixel(10, context).toFloat()
 
@@ -259,15 +271,46 @@ class DocumentDetaileView(
                 }
                 preventCornerOverlap = true
                 cardElevation = convertDpToPixel(10, context).toFloat()
+            }*/
+
+            val card = LinearLayoutCompat(context).apply {
+                layoutParams = LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(5)
+                }
             }
 
             val grid = TableLayout(context).apply {
-                setColumnStretchable(1, true)
-                //setColumnShrinkable(1,true)
+                setColumnShrinkable(2, true)
+
+                addView(
+                    TableRow(context).apply {
+                        addView(View(context))
+                        addView(HorizontalLine(context))
+                        addView(HorizontalLine(context))
+                        addView(HorizontalLine(context))
+                        setPadding(0)
+                    }
+                )
             }
+
             for (fv in createViews(context, fields)) {
                 fv.longClickListener = longClickListener
-                grid.addView(fv)
+                fv.clearValueListener = clearValueListener
+                with(grid){
+                    addView(fv)
+                    addView(
+                        TableRow(context).apply {
+                            addView(View(context))
+                            addView(HorizontalLine(context))
+                            addView(HorizontalLine(context))
+                            addView(HorizontalLine(context))
+                            setPadding(0)
+                        }
+                    )
+                }
             }
 
             card.addView(grid)
@@ -298,7 +341,7 @@ class DocumentDetaileView(
                 FieldType.Dictionary,
                 FieldType.MVDictionary ->
                     TextBasedFieldView(
-                        context, position, fm.type, fm.title, fm.isDirty, fm.value.toString()
+                        context, position, fm.type, fm.title, fm.isDirty, (fm.value ?: "").toString()
                     )
 
                 FieldType.Integer ->
@@ -332,48 +375,49 @@ class DocumentDetaileView(
         ) : TableRow(context) {
 
             var longClickListener: (Int) -> Boolean = { false }
+            var clearValueListener: (Int) -> Unit = {  }
 
             init {
                 minimumHeight = dp48pixels()
-                background = GradientDrawable().apply {
-                    setColor(Color.TRANSPARENT)
-                    setStroke(1, getColor(R.color.colorPrimaryDark))
-                }
-
+                gravity = Gravity.CENTER_VERTICAL
                 addView(
                     TextView(context).apply {
                         text = "$title : "
-                        gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                        gravity = Gravity.END
                     })
 
-                addView(View(context).apply {
-                    layoutParams = LayoutParams(
-                        2,
-                        LayoutParams.MATCH_PARENT
-                    )
-                    setBackgroundColor(getColor(R.color.colorPrimaryDark))
-                })
+                addView(
+                    View(context).apply {
+                        layoutParams = LayoutParams(
+                            1,
+                            LayoutParams.MATCH_PARENT
+                        )
+                        setBackgroundColor(getColor(R.color.colorPrimaryDark))
+                    })
 
                 addView(
-
                     createValueView(format(value), isDirty).apply {
-                        layoutParams = generateDefaultLayoutParams().apply {
-                            setMargins(0, 0, 10, 0)
-                            weight = 1F
-                        }
                         setOnLongClickListener {
                             longClickListener(position)
                         }
                         setPadding(10)
                     }
                 )
-                /*addView(View(context).apply {
-                    layoutParams = LayoutParams(
-                        2,
-                        LayoutParams.MATCH_PARENT
-                    )
-                    setBackgroundColor(Color.BLACK)
-                })*/
+
+                addView(
+                    ImageButton48(context).apply {
+                        setIcon(
+                            R.drawable.ic_clear_white_24dp,
+                            Color.RED)
+                        layoutParams = LayoutParams(
+                            LayoutParams.WRAP_CONTENT,
+                            layoutParams.height
+                        )
+                        setOnClickListener {
+                            clearValueListener(position)
+                        }
+                    }
+                )
                 setPadding(4)
             }
 
@@ -385,11 +429,14 @@ class DocumentDetaileView(
                 TextView(context).apply {
                     text = value
                     gravity = getAlignment()
-                    /*background = GradientDrawable().apply {
-                        setColor(if (isDirty) Color.YELLOW else Color.TRANSPARENT)
-                        cornerRadius = 5f
-                        setStroke(1, Color.BLACK)
-                    }*/
+                    if (isDirty) {
+                        //underLine()
+                        textBold()
+                        setTextColor(Color.BLACK)
+                        setBackgroundColor(
+                            getColor(
+                                R.color.colorPrimaryLight))
+                    }
                 }
 
         }
@@ -481,5 +528,17 @@ class DocumentDetaileView(
             override fun format(v: Date?): String =
                 if (v == null) "" else ShortDate.format(context, v)
         }*/
+
+        private class HorizontalLine(context: Context) : View(context){
+
+            init {
+                layoutParams = TableRow.LayoutParams(
+                    TableRow.LayoutParams.MATCH_PARENT,
+                    1
+                )
+                setBackgroundColor(getColor(R.color.colorPrimaryDark))
+
+            }
+        }
     }
 }
