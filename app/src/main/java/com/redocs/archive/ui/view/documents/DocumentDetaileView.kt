@@ -2,16 +2,20 @@ package com.redocs.archive.ui.view.documents
 
 import android.content.Context
 import android.graphics.Color
+import android.util.Log
 import android.view.*
 import android.view.Gravity.CENTER
 import android.view.Gravity.END
 import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.view.setMargins
 import androidx.core.view.setPadding
 import com.redocs.archive.*
+import com.redocs.archive.domain.document.DataType
 import com.redocs.archive.domain.document.FieldType
+import com.redocs.archive.domain.file.FileInfo
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.utils.*
@@ -70,12 +74,15 @@ class DocumentDetaileView(
             addPanel("Поля",FieldListView(
                 context,
                 dm.fields,
-                ::onFieldLongClick,
+                ::editField,
                 ::onClearFieldvalue
             ))
 
             if(dm.filesCount > 0) {
-                val fl = FileListView(context)
+                val fl = FileListView(context).apply {
+                    clickListener = ::viewFile
+                    longClickListener = ::editFile
+                }
                 fl.files = dm.files
                 addPanel(
                     "Files ( ${dm.filesCount} )", fl
@@ -93,6 +100,10 @@ class DocumentDetaileView(
 
     }
 
+    private fun viewFile(id: Long){
+        controller.viewFile(id)
+    }
+
     private fun onClearFieldvalue(pos: Int){
         controller.clearFieldValue(pos)
     }
@@ -107,10 +118,61 @@ class DocumentDetaileView(
 
     }
 
-    private fun onFieldLongClick(position: Int): Boolean {
+    private fun editField(position: Int): Boolean {
 
         val field = dm.fields[position]
-        controller.editField(context,field,position)
+        editField(context,field,position)
+        return true
+    }
+
+    private fun editField(context: Context, field: DocumentModel.FieldModel<*>, position: Int) {
+        val ed = createFieldEditor(context,controller,field)
+        ModalDialog(
+            ModalDialog.SaveDialogConfig(
+                ed,
+                title = field.title,
+                actionListener = { which ->
+                    when (which) {
+                        ModalDialog.DialogButton.POSITIVE -> {
+                            controller.setFieldValue(position, (ed as CustomEditor<*>).value)
+                        }
+
+                    }
+                }
+            )
+        )
+            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
+
+    }
+
+    private fun DocumentModel.FileModel.toDomainFileInfo() = FileInfo(id,name,size)
+
+    private fun editFile(file: DocumentModel.FileModel): Boolean {
+
+        val ed = TextCustomEditor(context,file.name)
+        ModalDialog(
+            ModalDialog.SaveDialogConfig(
+                ed,
+                //title = field.title,
+                actionListener = { which ->
+                    when (which) {
+                        ModalDialog.DialogButton.POSITIVE -> {
+                            val v = ed.value
+                            if(v != null)
+                                controller.saveFileInfo(
+                                    dm.files.indexOf(file),
+                                    FileInfo(
+                                        file.id,
+                                        v,
+                                        file.size)
+                                )
+                        }
+
+                    }
+                }
+            )
+        )
+            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
         return true
     }
 
@@ -132,6 +194,9 @@ class DocumentDetaileView(
     ) : LinearLayoutCompat(
         context
     ) {
+
+        var longClickListener: (DocumentModel.FileModel) -> Boolean = { false }
+        var clickListener: (Long)->Unit = {}
 
         var files: Collection<DocumentModel.FileModel> = emptyList()
             set(value){
@@ -158,11 +223,15 @@ class DocumentDetaileView(
 
                         var colored = false
 
-                        for (r in value) {
+                        for (fm in value) {
                             addView(
-                                r.toView(context).apply {
+                                fm.toView(context).apply {
                                     minimumHeight = dp48pixels()
                                     setBackgroundColor(if (colored) Color.LTGRAY else Color.TRANSPARENT)
+                                    clickListener = this@FileListView.clickListener
+                                    setOnLongClickListener{
+                                        longClickListener(fm)
+                                    }
                                 })
                             colored = !colored
                         }
@@ -207,6 +276,12 @@ class DocumentDetaileView(
                         text = resources.getString(R.string.file_size_title)
                         gravity = CENTER
                     })
+                addView(
+                    TextView(context).apply {
+                        minimumWidth = dp48pixels()
+                        text = ""
+                    }
+                )
 
             }
 
@@ -218,6 +293,8 @@ class DocumentDetaileView(
             val name: String,
             val size: Long
         ) : TableRow(context) {
+
+            var clickListener: (Long)->Unit = {}
 
             init {
                 gravity = Gravity.CENTER_VERTICAL
@@ -235,6 +312,23 @@ class DocumentDetaileView(
                         gravity = END
                         setPadding(0,0,15,0)
                     })
+                addView(
+                    ImageButton48(context).apply {
+                        layoutParams = LayoutParams(
+                            LayoutParams.MATCH_PARENT,
+                            LayoutParams.MATCH_PARENT
+                        )
+
+                        setIcon(
+                            R.drawable.ic_view_white_24dp,
+                            getColor(R.color.colorPrimary))
+
+                        setOnClickListener {
+                            clickListener(fileId)
+                        }
+                    }
+                    //TextView(context).apply { text = "+" }
+                )
             }
         }
 
@@ -296,20 +390,23 @@ class DocumentDetaileView(
                 )
             }
 
-            for (fv in createViews(context, fields)) {
-                fv.longClickListener = longClickListener
-                fv.clearValueListener = clearValueListener
-                with(grid){
-                    addView(fv)
-                    addView(
-                        TableRow(context).apply {
-                            addView(View(context))
-                            addView(HorizontalLine(context))
-                            addView(HorizontalLine(context))
-                            addView(HorizontalLine(context))
-                            setPadding(0)
-                        }
-                    )
+            for ((i,fm) in fields.withIndex()) {
+                with(fm.toView(context,i)) {
+                    this.longClickListener = longClickListener
+                    this.clearValueListener = clearValueListener
+                    val fv = this
+                    with(grid) {
+                        addView(fv)
+                        addView(
+                            TableRow(context).apply {
+                                addView(View(context))
+                                addView(HorizontalLine(context))
+                                addView(HorizontalLine(context))
+                                addView(HorizontalLine(context))
+                                setPadding(0)
+                            }
+                        )
+                    }
                 }
             }
 
@@ -319,50 +416,38 @@ class DocumentDetaileView(
 
         fun allowClose() = true
 
-        private fun createViews(
+        private fun DocumentModel.FieldModel<*>.toView(
             context: Context,
-            fields: Collection<DocumentModel.FieldModel<*>>
-        ): Collection<FieldView<*>> {
-            val l = mutableListOf<FieldView<*>>()
-            var i = 0
-            for (fm in fields)
-                l += createFieldView(context, i++, fm)
-            return l
-        }
-
-        private fun createFieldView(
-            context: Context,
-            position: Int,
-            fm: DocumentModel.FieldModel<*>
+            position: Int
         ): FieldView<*> =
-            when (fm.type) {
+            when (type) {
                 FieldType.LongText,
                 FieldType.Text,
                 FieldType.Dictionary,
                 FieldType.MVDictionary ->
                     TextBasedFieldView(
-                        context, position, fm.type, fm.title, fm.isDirty, (fm.value ?: "").toString()
+                        context, position, type, title, isDirty, (value ?: "").toString()
                     )
 
                 FieldType.Integer ->
                     IntegerFieldView(
-                        context, position, fm.type, fm.title, fm.isDirty, fm.value as Long?
+                        context, position, type, title, isDirty, value as Long?
                     )
 
                 FieldType.Decimal ->
                     DecimalFieldView(
-                        context, position, fm.type, fm.title, fm.isDirty, fm.value as Double?
+                        context, position, type, title, isDirty, value as Double?
                     )
 
                 FieldType.Date -> DateFieldView(
                     context,
                     position,
-                    fm.title,
-                    fm.isDirty,
-                    fm.value as Date?
+                    title,
+                    isDirty,
+                    value as Date?
                 )
                 else ->
-                    throw ClassNotFoundException("Field of type ${fm.type} not found")
+                    throw ClassNotFoundException("Field of type ${type} not found")
             }
 
         private abstract class FieldView<T>(
@@ -540,5 +625,39 @@ class DocumentDetaileView(
 
             }
         }
+    }
+}
+
+private fun createFieldEditor(
+    context: Context,
+    controller: Controller,
+    field: DocumentModel.FieldModel<*>
+): View {
+
+    val value = field.value
+    return when (field.type.dataType) {
+        DataType.Integer -> IntegerCustomEditor(context, value?.asLongOrNull())
+        DataType.Decimal -> DecimalCustomEditor(context, value as Double?)
+        DataType.Date -> DateEditor(context, value as Date?)
+        DataType.DictionaryEntry -> {
+            val editor = DictionaryEditor(
+                context,
+                value as DocumentModel.DictionaryEntry?)
+            controller.loadDictionaryEntries(
+                editor,
+                (field as DocumentModel.DictionaryFieldModel).dictionaryId)
+
+            /*scope.launch {
+                val l = loadDictionaryEntries(
+                    (field as DocumentModel.DictionaryFieldModel).dictionaryId
+                )
+                withContext(Dispatchers.Main){
+                    editor.model = SimpleList.ListModel(l)
+                }
+            }*/
+            editor
+        }
+        else ->
+            TextCustomEditor(context, value.toString())
     }
 }

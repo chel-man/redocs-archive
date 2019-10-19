@@ -40,7 +40,7 @@ class InMemoryPartitionsStructureDataSource: PartitionsStructureDataSource {
         }
 
     override suspend fun add(parentId: Long, name: String, after: Long): PartitionStructureNode {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented") //To change body of created functions use FileInfo | Settings | FileInfo Templates.
     }
 
 }

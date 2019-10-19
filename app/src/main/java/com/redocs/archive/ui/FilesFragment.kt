@@ -96,7 +96,7 @@ private class FileListDataSource : ListView.ListDataSource<ListRow>() {
     init {
         val l = mutableListOf<ListRow>()
         for(i in 1..20L)
-            l.add(ListView.ListRowBase(i-1, "File ${i-1}"))
+            l.add(ListView.ListRowBase(i-1, "FileInfo ${i-1}"))
         data = l
     }
 

@@ -10,7 +10,7 @@ data class DocumentModel(
     val name: String,
     val filesCount: Int = 0,
     val fields: List<FieldModel<*>> = emptyList(),
-    val files: Collection<FileModel> = emptyList(),
+    val files: List<FileModel> = emptyList(),
     val activePanelPos: Int = 0
 
 ) : DocumentModelInterface {
@@ -23,10 +23,10 @@ data class DocumentModel(
                 if (f.isDirty)
                     return true
             }
-            for (f in files) {
+            /*for (f in files) {
                 if (f.isDirty)
                     return true
-            }
+            }*/
             return false
         }
 
@@ -152,10 +152,10 @@ data class DocumentModel(
         var name: String,
         val size: Long
     ) {
-        val isDirty: Boolean
+        /*val isDirty: Boolean
             get() = name != initName
 
-        private val initName = name
+        private val initName = name*/
 
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -172,9 +172,9 @@ data class DocumentModel(
             return id.hashCode()
         }
 
-        fun undo() {
+        /*fun undo() {
             name = initName
-        }
+        }*/
     }
 
     data class DictionaryEntry(

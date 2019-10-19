@@ -1,22 +1,18 @@
 package com.redocs.archive.ui.view.documents
 
-import android.content.Context
-import android.util.Log
-import android.view.View
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import com.redocs.archive.asDoubleOrNull
 import com.redocs.archive.asLongOrNull
 import com.redocs.archive.data.dictionary.DictionaryRepository
 import com.redocs.archive.data.files.Repository
 import com.redocs.archive.domain.dictionary.Dictionary
-import com.redocs.archive.domain.document.DataType
 import com.redocs.archive.domain.document.Document
 import com.redocs.archive.domain.document.FieldType
-import com.redocs.archive.domain.file.File
-import com.redocs.archive.ui.utils.*
+import com.redocs.archive.domain.file.FileInfo
+import com.redocs.archive.ui.utils.NotFoundException
 import com.redocs.archive.ui.view.list.SimpleList
 import kotlinx.coroutines.*
+import java.io.File
 import java.util.*
 
 interface DocumentControllerInterface
@@ -55,7 +51,7 @@ class Controller(
         documentLive.value = d.copy(activePanelPos = 0)
     }
 
-    private fun <T> setFieldValue(position: Int, v: T?) {
+    fun <T> setFieldValue(position: Int, v: T?) {
         val d = documentLive.value as DocumentModel
         val l = mutableListOf<DocumentModel.FieldModel<*>>().apply {
             addAll(d.fields)
@@ -69,61 +65,33 @@ class Controller(
         val fls = mutableListOf<DocumentModel.FieldModel<*>>()
         for(f in d.fields)
             fls += f.undo()
-        for(fl in d.files)
-            fl.undo()
+        /*for(fl in d.files)
+            fl.undo()*/
         documentLive.value = d.copy(fields = fls.toList(), files = d.files)
-    }
-
-    fun editField(context: Context, field: DocumentModel.FieldModel<*>, position: Int) {
-        val ed = createFieldEditor(
-            context,
-            field)
-        ModalDialog(
-            ModalDialog.SaveDialogConfig(
-                ed,
-                title = field.title,
-                actionListener = { which ->
-                    when (which) {
-                        ModalDialog.DialogButton.POSITIVE -> {
-                            setFieldValue(position, (ed as CustomEditor<*>).value)
-                        }
-
-                    }
-                }
-            )
-        )
-            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
-
     }
 
     fun clearFieldValue(position: Int) {
         setFieldValue(position, null)
     }
 
-    private fun createFieldEditor(context: Context, field: DocumentModel.FieldModel<*>): View {
+    fun viewFile(id: Long) {
+        scope.launch {
+            val file = filesRepository.getContent(id)
+        }
+    }
 
-        val value = field.value
-        return when (field.type.dataType) {
-            DataType.Integer -> IntegerCustomEditor(context, value?.asLongOrNull())
-            DataType.Decimal -> DecimalCustomEditor(context, value as Double?)
-            DataType.Date -> DateEditor(context, value as Date?)
-            DataType.DictionaryEntry -> {
-                val editor = DictionaryEditor(
-                    context,
-                    value as DocumentModel.DictionaryEntry?)
+    fun saveFileInfo(position: Int, file: FileInfo) {
+        scope.launch {
+            filesRepository.update(file)
+        }
+    }
 
-                scope.launch {
-                    val l = loadDictionaryEntries(
-                        (field as DocumentModel.DictionaryFieldModel).dictionaryId
-                    )
-                    withContext(Dispatchers.Main){
-                        editor.model = SimpleList.ListModel(l)
-                    }
-                }
-                editor
+    fun loadDictionaryEntries(editor: DictionaryEditor, id: Long){
+        scope.launch {
+            val l = loadDictionaryEntries(id)
+            withContext(Dispatchers.Main){
+                editor.model = SimpleList.ListModel(l)
             }
-            else ->
-                TextCustomEditor(context, value.toString())
         }
     }
 
@@ -142,7 +110,7 @@ class Controller(
             fields.map { it.toModel() }
         )
 
-    private inline fun File.toModel() =
+    private inline fun FileInfo.toModel() =
         DocumentModel.FileModel(id, name, size)
 
     private fun Document.Field.toModel(): DocumentModel.FieldModel<*> {
