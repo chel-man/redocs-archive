@@ -2,18 +2,15 @@ package com.redocs.archive.ui.view.documents
 
 import android.content.Context
 import android.graphics.Color
-import android.util.Log
 import android.view.*
 import android.view.Gravity.CENTER
 import android.view.Gravity.END
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.view.setMargins
 import androidx.core.view.setPadding
 import com.redocs.archive.*
-import com.redocs.archive.domain.document.DataType
 import com.redocs.archive.domain.document.FieldType
 import com.redocs.archive.domain.file.FileInfo
 import com.redocs.archive.framework.EventBus
@@ -80,7 +77,7 @@ class DocumentDetaileView(
 
             if(dm.filesCount > 0) {
                 val fl = FileListView(context).apply {
-                    clickListener = ::viewFile
+                    actionListener = ::onFileAction
                     longClickListener = ::editFile
                 }
                 fl.files = dm.files
@@ -98,6 +95,17 @@ class DocumentDetaileView(
             }
         }
 
+    }
+
+    private fun onFileAction(id: Long, action: Action) {
+        when(action){
+            Action.VIEW -> viewFile(id)
+        }
+    }
+
+    private fun editFile(fm: DocumentModel.FileModel): Boolean {
+        controller.editFile(context,fm)
+        return true
     }
 
     private fun viewFile(id: Long){
@@ -121,60 +129,11 @@ class DocumentDetaileView(
     private fun editField(position: Int): Boolean {
 
         val field = dm.fields[position]
-        editField(context,field,position)
+        controller.editField(context,field,position)
         return true
-    }
-
-    private fun editField(context: Context, field: DocumentModel.FieldModel<*>, position: Int) {
-        val ed = createFieldEditor(context,controller,field)
-        ModalDialog(
-            ModalDialog.SaveDialogConfig(
-                ed,
-                title = field.title,
-                actionListener = { which ->
-                    when (which) {
-                        ModalDialog.DialogButton.POSITIVE -> {
-                            controller.setFieldValue(position, (ed as CustomEditor<*>).value)
-                        }
-
-                    }
-                }
-            )
-        )
-            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
-
     }
 
     private fun DocumentModel.FileModel.toDomainFileInfo() = FileInfo(id,name,size)
-
-    private fun editFile(file: DocumentModel.FileModel): Boolean {
-
-        val ed = TextCustomEditor(context,file.name)
-        ModalDialog(
-            ModalDialog.SaveDialogConfig(
-                ed,
-                //title = field.title,
-                actionListener = { which ->
-                    when (which) {
-                        ModalDialog.DialogButton.POSITIVE -> {
-                            val v = ed.value
-                            if(v != null)
-                                controller.saveFileInfo(
-                                    dm.files.indexOf(file),
-                                    FileInfo(
-                                        file.id,
-                                        v,
-                                        file.size)
-                                )
-                        }
-
-                    }
-                }
-            )
-        )
-            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
-        return true
-    }
 
     override fun createContextActionMenu(mode: ActionMode, inflater: MenuInflater, menu: Menu) {
         actionMode = mode
@@ -196,7 +155,7 @@ class DocumentDetaileView(
     ) {
 
         var longClickListener: (DocumentModel.FileModel) -> Boolean = { false }
-        var clickListener: (Long)->Unit = {}
+        var actionListener: (Long, Action)->Unit = {id, action ->  }
 
         var files: Collection<DocumentModel.FileModel> = emptyList()
             set(value){
@@ -228,7 +187,7 @@ class DocumentDetaileView(
                                 fm.toView(context).apply {
                                     minimumHeight = dp48pixels()
                                     setBackgroundColor(if (colored) Color.LTGRAY else Color.TRANSPARENT)
-                                    clickListener = this@FileListView.clickListener
+                                    actionListener = this@FileListView.actionListener
                                     setOnLongClickListener{
                                         longClickListener(fm)
                                     }
@@ -294,7 +253,7 @@ class DocumentDetaileView(
             val size: Long
         ) : TableRow(context) {
 
-            var clickListener: (Long)->Unit = {}
+            var actionListener: (Long,Action)->Unit = {l, action ->  }
 
             init {
                 gravity = Gravity.CENTER_VERTICAL
@@ -324,10 +283,9 @@ class DocumentDetaileView(
                             getColor(R.color.colorPrimary))
 
                         setOnClickListener {
-                            clickListener(fileId)
+                            actionListener(fileId, Action.VIEW)
                         }
                     }
-                    //TextView(context).apply { text = "+" }
                 )
             }
         }
@@ -625,39 +583,5 @@ class DocumentDetaileView(
 
             }
         }
-    }
-}
-
-private fun createFieldEditor(
-    context: Context,
-    controller: Controller,
-    field: DocumentModel.FieldModel<*>
-): View {
-
-    val value = field.value
-    return when (field.type.dataType) {
-        DataType.Integer -> IntegerCustomEditor(context, value?.asLongOrNull())
-        DataType.Decimal -> DecimalCustomEditor(context, value as Double?)
-        DataType.Date -> DateEditor(context, value as Date?)
-        DataType.DictionaryEntry -> {
-            val editor = DictionaryEditor(
-                context,
-                value as DocumentModel.DictionaryEntry?)
-            controller.loadDictionaryEntries(
-                editor,
-                (field as DocumentModel.DictionaryFieldModel).dictionaryId)
-
-            /*scope.launch {
-                val l = loadDictionaryEntries(
-                    (field as DocumentModel.DictionaryFieldModel).dictionaryId
-                )
-                withContext(Dispatchers.Main){
-                    editor.model = SimpleList.ListModel(l)
-                }
-            }*/
-            editor
-        }
-        else ->
-            TextCustomEditor(context, value.toString())
     }
 }

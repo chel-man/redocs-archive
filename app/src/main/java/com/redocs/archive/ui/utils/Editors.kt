@@ -1,7 +1,11 @@
 package com.redocs.archive.ui.utils
 
 import android.content.Context
+import android.text.Editable
+import android.text.InputFilter
 import android.text.InputType
+import android.text.TextWatcher
+import android.util.Log
 import android.widget.DatePicker
 import android.widget.EditText
 import com.redocs.archive.asDoubleOrNull
@@ -36,6 +40,29 @@ class TextCustomEditor(
     override val value: String?
         get() = text?.toString()
 
+    var minLength: Int = 0
+        set(value){
+
+            if(value >0 )
+                addTextChangedListener(object:TextWatcher{
+                    override fun afterTextChanged(s: Editable?) {
+                        if(s.toString().length < value)
+                            error = "Min len is $value"
+                    }
+
+                    override fun beforeTextChanged(
+                        s: CharSequence?,
+                        start: Int,
+                        count: Int,
+                        after: Int
+                    ) {
+                    }
+
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    }
+                })
+            field = value
+        }
 }
 
 class IntegerCustomEditor(

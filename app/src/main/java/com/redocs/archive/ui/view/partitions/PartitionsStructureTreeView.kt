@@ -20,6 +20,7 @@ import com.redocs.archive.ui.utils.ContextActionSource
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.SelectPartitionNodeRequestEvent
 import com.redocs.archive.setItemEnabled
+import com.redocs.archive.ui.utils.Action
 import com.redocs.archive.ui.utils.convertDpToPixel
 import com.redocs.archive.ui.view.button.ImageButton48
 import com.redocs.archive.ui.view.tree.TreeView
@@ -82,7 +83,7 @@ class PartitionsStructureTreeView(
             c.visibility = View.VISIBLE
 
         c.setOnClickListener {
-            nodeActionListener?.invoke(node.id,Action.VIEW)
+            nodeActionListener?.invoke(node.id, Action.VIEW)
         }
     }
 
@@ -162,8 +163,4 @@ interface PartitionStructureTreeViewNode : TreeViewNode
 
 class PartitionStructureViewModel : TreeViewViewModel() {
     //var repository: PartitionsStructureRepository? = null
-}
-
-enum class Action {
-    VIEW
 }

@@ -69,3 +69,7 @@ class LongDate {
         }
     }
 }
+
+enum class Action {
+    VIEW
+}

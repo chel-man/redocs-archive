@@ -1,18 +1,21 @@
 package com.redocs.archive.ui.view.documents
 
+import android.content.Context
+import android.view.View
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import com.redocs.archive.asDoubleOrNull
 import com.redocs.archive.asLongOrNull
 import com.redocs.archive.data.dictionary.DictionaryRepository
 import com.redocs.archive.data.files.Repository
 import com.redocs.archive.domain.dictionary.Dictionary
+import com.redocs.archive.domain.document.DataType
 import com.redocs.archive.domain.document.Document
 import com.redocs.archive.domain.document.FieldType
 import com.redocs.archive.domain.file.FileInfo
-import com.redocs.archive.ui.utils.NotFoundException
+import com.redocs.archive.ui.utils.*
 import com.redocs.archive.ui.view.list.SimpleList
 import kotlinx.coroutines.*
-import java.io.File
 import java.util.*
 
 interface DocumentControllerInterface
@@ -80,19 +83,66 @@ class Controller(
         }
     }
 
-    fun saveFileInfo(position: Int, file: FileInfo) {
+    private fun saveFileInfo(position: Int, file: FileInfo) {
         scope.launch {
             filesRepository.update(file)
         }
     }
 
-    fun loadDictionaryEntries(editor: DictionaryEditor, id: Long){
-        scope.launch {
+    private fun loadDictionaryEntries(editor: DictionaryEditor, id: Long) = scope.launch {
             val l = loadDictionaryEntries(id)
             withContext(Dispatchers.Main){
                 editor.model = SimpleList.ListModel(l)
             }
         }
+
+    fun editField(context: Context, field: DocumentModel.FieldModel<*>, position: Int) {
+        val ed = createFieldEditor(context,field)
+        ModalDialog(
+            ModalDialog.SaveDialogConfig(
+                ed,
+                title = field.title,
+                actionListener = { which ->
+                    when (which) {
+                        ModalDialog.DialogButton.POSITIVE -> {
+                            setFieldValue(position, (ed as CustomEditor<*>).value)
+                        }
+
+                    }
+                }
+            )
+        )
+            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
+
+    }
+
+    fun editFile(context: Context, file: DocumentModel.FileModel): Boolean {
+
+        val ed = TextCustomEditor(context,file.name).apply { minLength = 1 }
+        ModalDialog(
+            ModalDialog.SaveDialogConfig(
+                ed,
+                //title = field.title,
+                actionListener = { which ->
+                    when (which) {
+                        ModalDialog.DialogButton.POSITIVE -> {
+                            val dm = documentLive.value as DocumentModel
+                            val v = ed.value
+                            if(v != null)
+                                saveFileInfo(
+                                    dm.files.indexOf(file),
+                                    FileInfo(
+                                        file.id,
+                                        v,
+                                        file.size)
+                                )
+                        }
+                    }
+                }
+            )
+        )
+            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
+        return true
     }
 
     private fun loadDictionaryEntriesSync(id: Long) = runBlocking {
@@ -143,4 +193,34 @@ class Controller(
         throw NotFoundException(de.id,"dictionary entry ${de.id} not found")
     }
 
+
+    private fun createFieldEditor(
+        context: Context,
+        field: DocumentModel.FieldModel<*>
+    ): View {
+
+        val value = field.value
+        return when (field.type.dataType) {
+            DataType.Integer -> IntegerCustomEditor(context, value?.asLongOrNull())
+            DataType.Decimal -> DecimalCustomEditor(context, value as Double?)
+            DataType.Date -> DateEditor(context, value as Date?)
+            DataType.DictionaryEntry -> {
+                val editor = DictionaryEditor(
+                    context,
+                    value as DocumentModel.DictionaryEntry?)
+
+                scope.launch {
+                    val l = loadDictionaryEntries(
+                        (field as DocumentModel.DictionaryFieldModel).dictionaryId
+                    )
+                    withContext(Dispatchers.Main){
+                        editor.model = SimpleList.ListModel(l)
+                    }
+                }
+                editor
+            }
+            else ->
+                TextCustomEditor(context, value.toString())
+        }
+    }
 }
