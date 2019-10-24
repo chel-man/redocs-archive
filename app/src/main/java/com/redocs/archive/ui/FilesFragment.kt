@@ -2,9 +2,11 @@ package com.redocs.archive.ui
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.view.setMargins
@@ -16,6 +18,15 @@ import com.redocs.archive.ui.view.list.ListView
 import com.redocs.archive.ui.view.list.ListRow
 import com.redocs.archive.ui.view.panels.StackPanel
 import kotlinx.coroutines.delay
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import android.content.pm.PackageManager
+import com.redocs.archive.BuildConfig
+import androidx.core.content.FileProvider
+import android.content.Intent
+import com.redocs.archive.ui.utils.showError
+
 
 class FilesFragment() : Fragment(), ActivablePanel {
 
@@ -36,24 +47,58 @@ class FilesFragment() : Fragment(), ActivablePanel {
         savedInstanceState: Bundle?
     ): View? {
 
-        return StackPanel(context).apply {
-            addPanel("Panel 1",
-                LinearLayoutCompat(context).apply {
-                    layoutParams = LinearLayoutCompat.LayoutParams(
-                        LinearLayoutCompat.LayoutParams.MATCH_PARENT,
-                        LinearLayoutCompat.LayoutParams.MATCH_PARENT
-                    ).apply {
-                        setMargins(15)
-                    }
-                    orientation = LinearLayoutCompat.VERTICAL
+        return Button(context).apply {
+            text = "open"
+            setOnClickListener {
+                val fn = "test.png"
+                val dir = File(context.filesDir,"temp")
+                dir.mkdirs()
+                Log.d("#FileProvider",dir.absolutePath)
+                var f = File(dir,fn)
+                if(f.exists())
+                    f.delete()
+                Log.d("#FileProvider", "creating file ...")
+                try {
 
-                    addView(
-                        TextView(context).apply { text = "Text Panel 1" }
-                    )
+                    context.resources.assets
+                        .open(fn).use {
+                            val fis = it
+                            FileOutputStream(f.absolutePath).use {
+                                val ba = ByteArray(512)
+                                var bytes = fis.read(ba)
+                                while (bytes > 0) {
+                                    it.write(ba, 0, bytes)
+                                    bytes = fis.read(ba)
+                                }
+                            }
+                        }
+                    //f = File(dir,fn)
                 }
-            )
-            addPanel("Panel 2", TextView(context).apply { text = "Text Panel 2" })
-            addPanel("Panel 3", TextView(context).apply { text = "Text Panel 3" })
+                catch (e: IOException) {
+                    Log.e("#FileProvider", "Exception copying from assets", e);
+                    return@setOnClickListener
+                }
+                Log.e("#FileProvider", "OK ${f.absolutePath} size = ${f.length()}");
+                val intent = Intent(Intent.ACTION_VIEW)
+
+// set flag to give temporary permission to external app to use your FileProvider
+                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+
+// generate URI, I defined authority as the application ID in the Manifest, the last param is file I want to open
+                val uri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID, f)
+                Log.d("#FileProvider","uri: $uri")
+
+// I am opening a PDF file so I give it a valid MIME type
+                intent.setData/*AndType*/(uri)//, "application/png")
+
+// validate that the device can open your File!
+                val pm = activity!!.packageManager
+                if (intent.resolveActivity(pm) != null) {
+                    startActivity(intent)
+                }
+                else
+                    showError(context,"Cannot find default app")
+            }
         }
     }
 

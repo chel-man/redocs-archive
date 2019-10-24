@@ -10,6 +10,7 @@ import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.view.setMargins
 import androidx.core.view.setPadding
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.redocs.archive.*
 import com.redocs.archive.domain.document.FieldType
 import com.redocs.archive.domain.file.FileInfo
@@ -42,13 +43,13 @@ class DocumentDetaileView(
         }
 
         orientation = VERTICAL
-        if (dm.isStub) {
+        if(dm.isStub) {
             addView(
                 ProgressBar(context).apply {
                     this.isIndeterminate = true
-
                 })
-        } else {
+        }
+        else{
             panel = createStackPanel()
             addView(panel)
         }
@@ -61,6 +62,15 @@ class DocumentDetaileView(
         panel = createStackPanel()
         addView(panel)
         checkActionMode()
+        if(panel.isEnabled && dm.filesCount == 0)
+            panel.addView(
+                FloatingActionButton(context).apply {
+                    //setImageIcon()
+                    setBackgroundColor(Color.GREEN)
+                    setOnClickListener {
+                        onFileAction(DocumentModel.FileModel.EmptyFileModel,Action.ADD)
+                    }
+                })
 
     }
 
@@ -97,19 +107,16 @@ class DocumentDetaileView(
 
     }
 
-    private fun onFileAction(id: Long, action: Action) {
+    private fun onFileAction(fm: DocumentModel.FileModel, action: Action) {
         when(action){
-            Action.VIEW -> viewFile(id)
+            Action.VIEW -> controller.viewFile(context,fm)
+            Action.DELETE -> controller.deleteFile(fm)
         }
     }
 
     private fun editFile(fm: DocumentModel.FileModel): Boolean {
         controller.editFile(context,fm)
         return true
-    }
-
-    private fun viewFile(id: Long){
-        controller.viewFile(id)
     }
 
     private fun onClearFieldvalue(pos: Int){
@@ -155,7 +162,7 @@ class DocumentDetaileView(
     ) {
 
         var longClickListener: (DocumentModel.FileModel) -> Boolean = { false }
-        var actionListener: (Long, Action)->Unit = {id, action ->  }
+        var actionListener: (DocumentModel.FileModel, Action)->Unit = {id, action ->  }
 
         var files: Collection<DocumentModel.FileModel> = emptyList()
             set(value){
@@ -187,7 +194,9 @@ class DocumentDetaileView(
                                 fm.toView(context).apply {
                                     minimumHeight = dp48pixels()
                                     setBackgroundColor(if (colored) Color.LTGRAY else Color.TRANSPARENT)
-                                    actionListener = this@FileListView.actionListener
+                                    actionListener = {id, action ->
+                                        this@FileListView.actionListener(fm, action)
+                                    }
                                     setOnLongClickListener{
                                         longClickListener(fm)
                                     }
@@ -238,9 +247,11 @@ class DocumentDetaileView(
                 addView(
                     TextView(context).apply {
                         minimumWidth = dp48pixels()
-                        text = ""
-                    }
-                )
+                    })
+                addView(
+                    TextView(context).apply {
+                        minimumWidth = dp48pixels()
+                    })
 
             }
 
@@ -285,8 +296,22 @@ class DocumentDetaileView(
                         setOnClickListener {
                             actionListener(fileId, Action.VIEW)
                         }
-                    }
-                )
+                    })
+                addView(
+                    ImageButton48(context).apply {
+                        layoutParams = LayoutParams(
+                            LayoutParams.MATCH_PARENT,
+                            LayoutParams.MATCH_PARENT
+                        )
+
+                        setIcon(
+                            R.drawable.ic_delete_white_24dp,
+                            Color.RED)
+
+                        setOnClickListener {
+                            actionListener(fileId, Action.DELETE)
+                        }
+                    })
             }
         }
 

@@ -172,9 +172,13 @@ data class DocumentModel(
             return id.hashCode()
         }
 
-        /*fun undo() {
-            name = initName
-        }*/
+        override fun toString(): String {
+            return "{$id, $name, $size}"
+        }
+
+        companion object {
+            var EmptyFileModel = FileModel(-1,"",0)
+        }
     }
 
     data class DictionaryEntry(

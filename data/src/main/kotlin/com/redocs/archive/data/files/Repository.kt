@@ -10,4 +10,5 @@ class Repository(private val ds: DataSource){
     suspend fun getUrl(id: Long): URL = ds.getUrl(id)
     suspend fun getContent(id: Long): InputStream = ds.getContent(id)
     suspend fun update(file: FileInfo) = ds.update(file)
+    suspend fun delete(file: FileInfo) = ds.delete(file)
 }

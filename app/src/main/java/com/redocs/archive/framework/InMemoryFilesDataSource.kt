@@ -16,9 +16,9 @@ class InMemoryFilesDataSource : DataSource {
         FileInfo(3, "File3.txt", 5471354)
     )
 
-    private val filesByDocument = mutableMapOf<Long,List<FileInfo>>(
-        1L to listOf(files[0]),
-        2L to listOf(files[1],files[2])
+    private val filesByDocument = mutableMapOf<Long,MutableList<Int>>(
+        1L to mutableListOf(0),
+        2L to mutableListOf(1,2)
     )
 
     override suspend fun update(file: FileInfo) = withContext(Dispatchers.IO) {
@@ -35,6 +35,22 @@ class InMemoryFilesDataSource : DataSource {
 
     override suspend fun list(parentId: Long): List<FileInfo> = withContext(Dispatchers.IO) {
         delay(500)
-        filesByDocument[parentId] ?: emptyList()
+        val fl = filesByDocument[parentId] ?: listOf<Int>()
+        val l = mutableListOf<FileInfo>()
+        for(pos in fl){
+            l += files[pos]
+        }
+        l
+    }
+
+    override suspend fun delete(file: FileInfo) = withContext(Dispatchers.IO) {
+        for(es in filesByDocument.entries){
+            for((i,pos) in es.value.withIndex()){
+                if(files[pos].id == file.id){
+                    es.value.removeAt(i)
+                    return@withContext
+                }
+            }
+        }
     }
 }

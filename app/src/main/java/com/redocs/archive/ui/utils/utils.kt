@@ -71,5 +71,7 @@ class LongDate {
 }
 
 enum class Action {
-    VIEW
+    VIEW,
+    DELETE,
+    ADD
 }

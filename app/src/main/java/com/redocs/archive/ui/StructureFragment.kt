@@ -15,7 +15,7 @@ import com.redocs.archive.data.partitions.PartitionsStructureRepository
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.ui.events.ActivateDocumentListEvent
 import com.redocs.archive.ui.events.PartitionNodeSelectedEvent
-import com.redocs.archive.ui.view.partitions.Action
+import com.redocs.archive.ui.utils.Action
 import com.redocs.archive.ui.view.partitions.PartitionStructureTreeViewNode
 import com.redocs.archive.ui.view.partitions.PartitionStructureViewModel
 import com.redocs.archive.ui.view.partitions.PartitionsStructureTreeView

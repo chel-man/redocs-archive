@@ -1,9 +1,13 @@
 package com.redocs.archive.ui.view.documents
 
 import android.content.Context
+import android.content.Intent
+import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.lifecycle.MutableLiveData
+import com.redocs.archive.BuildConfig
 import com.redocs.archive.asDoubleOrNull
 import com.redocs.archive.asLongOrNull
 import com.redocs.archive.data.dictionary.DictionaryRepository
@@ -16,6 +20,8 @@ import com.redocs.archive.domain.file.FileInfo
 import com.redocs.archive.ui.utils.*
 import com.redocs.archive.ui.view.list.SimpleList
 import kotlinx.coroutines.*
+import java.io.File
+import java.io.FileOutputStream
 import java.util.*
 
 interface DocumentControllerInterface
@@ -77,24 +83,38 @@ class Controller(
         setFieldValue(position, null)
     }
 
-    fun viewFile(id: Long) {
-        scope.launch {
-            val file = filesRepository.getContent(id)
-        }
-    }
-
-    private fun saveFileInfo(position: Int, file: FileInfo) {
-        scope.launch {
-            filesRepository.update(file)
-        }
-    }
-
-    private fun loadDictionaryEntries(editor: DictionaryEditor, id: Long) = scope.launch {
-            val l = loadDictionaryEntries(id)
-            withContext(Dispatchers.Main){
-                editor.model = SimpleList.ListModel(l)
+    fun viewFile(context: Context, fm: DocumentModel.FileModel) {
+        scope.launch(Dispatchers.IO) {
+            val dir = File(context.filesDir,"temp")
+            dir.mkdirs()
+            val fis = filesRepository.getContent(fm.id)
+            var f = File(dir, fm.name)
+            if(f.exists())
+                f.delete()
+            fis.use {
+                val fis = it
+                FileOutputStream(f).use {
+                    val ba = ByteArray(1204)
+                    var bytes = fis.read(ba)
+                    while (bytes > 0) {
+                        it.write(ba, 0, bytes)
+                        bytes = fis.read(ba)
+                    }
+                }
+            }
+            f.deleteOnExit()
+            withContext(Dispatchers.Main) {
+                openFile(context, f)
             }
         }
+    }
+
+    fun deleteFile(fm: DocumentModel.FileModel){
+        scope.launch {
+            filesRepository.delete(fm.toFileInfo())
+            refreshFileList()
+        }
+    }
 
     fun editField(context: Context, field: DocumentModel.FieldModel<*>, position: Int) {
         val ed = createFieldEditor(context,field)
@@ -144,6 +164,44 @@ class Controller(
             .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
         return true
     }
+
+    private fun saveFileInfo(position: Int, file: FileInfo) {
+        scope.launch {
+            filesRepository.update(file)
+            refreshFileList()
+        }
+    }
+
+    private suspend fun refreshFileList(){
+        val d = documentLive.value as DocumentModel
+        val files = filesRepository.list(d.id).map{ it.toModel()}
+        documentLive.value = d.copy(
+            files = files,
+            activePanelPos = if(files.isEmpty()) 0 else 1,
+            filesCount = files.size)
+    }
+
+    private fun loadDictionaryEntries(editor: DictionaryEditor, id: Long) = scope.launch {
+        val l = loadDictionaryEntries(id)
+        withContext(Dispatchers.Main){
+            editor.model = SimpleList.ListModel(l)
+        }
+    }
+
+    private fun openFile(context: Context, f: File) =
+
+        Intent(Intent.ACTION_VIEW).apply {
+
+            // set flag to give temporary permission to external app to use your FileProvider
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            // generate URI, I defined authority as the application ID in the Manifest, the last param is file I want to open
+            data = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID, f)
+            // validate that the device can open your File!
+            if (resolveActivity(context.packageManager) != null)
+                context.startActivity(this)
+            else
+                showError(context,"No app to open file ${f.name}")
+        }
 
     private fun loadDictionaryEntriesSync(id: Long) = runBlocking {
         dictionaryRepository.getEntries(id)
@@ -224,3 +282,6 @@ class Controller(
         }
     }
 }
+
+private fun DocumentModel.FileModel.toFileInfo() =
+    FileInfo(id,name,size)
