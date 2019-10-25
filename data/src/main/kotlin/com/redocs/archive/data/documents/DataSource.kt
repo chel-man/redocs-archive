@@ -5,4 +5,5 @@ import com.redocs.archive.domain.document.Document
 interface DataSource {
     suspend fun list(parentId: Long, start: Int, size: Int): Collection<Document>
     suspend fun get(id: Long): Document
+    suspend fun get(ids: List<Long>): Collection<Document>
 }

@@ -8,4 +8,5 @@ class Repository(private val ds: DataSource){
         ds.list(parentId, start, size)
 
     suspend fun get(id: Long): Document = ds.get(id)
+    suspend fun get(ids: List<Long>): Collection<Document> = ds.get(ids)
 }

@@ -92,7 +92,8 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
     }
 
     private fun startLoadDocument() {
-        vm.document.value = DocumentModel(-vm.documentId, "", activePanelPos = 0)
+        vm.document.value = DocumentModel(
+            -vm.documentId, "", activePanelPos = 0, created = null,updated = null)
         getController().load()
     }
 
@@ -131,7 +132,7 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? =
+    ) =
         LinearLayoutCompat(context).apply {
             layoutParams = LinearLayoutCompat.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,

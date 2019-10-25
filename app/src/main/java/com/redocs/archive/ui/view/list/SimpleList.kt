@@ -13,7 +13,7 @@ import com.redocs.archive.ui.utils.convertDpToPixel
 
 open class SimpleList<T>(context: Context) : RecyclerView(context){
 
-    var model: ListModel<T> = emptyListModel<T>()
+    var model: ListModel<T> = EmptyListModel<T>()
         set(value) {
             adapter = Adapter<T>(context, value) {pos ->
                 selectionListener?.invoke(pos)
@@ -131,5 +131,5 @@ open class SimpleList<T>(context: Context) : RecyclerView(context){
         var selectedPosition: Int = -1,
         var topPosition: Int = 0)
 
-    private fun <T> emptyListModel() = ListModel<T> (emptyList())
+    private class EmptyListModel<T>() : ListModel<T> (emptyList())
 }

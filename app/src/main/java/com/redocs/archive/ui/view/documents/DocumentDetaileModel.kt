@@ -1,5 +1,6 @@
 package com.redocs.archive.ui.view.documents
 
+import com.redocs.archive.domain.document.Document
 import com.redocs.archive.domain.document.FieldType
 import java.util.*
 
@@ -8,6 +9,8 @@ interface DocumentModelInterface
 data class DocumentModel(
     val id: Long,
     val name: String,
+    val created: Date?,
+    val updated: Date?,
     val filesCount: Int = 0,
     val fields: List<FieldModel<*>> = emptyList(),
     val files: List<FileModel> = emptyList(),
@@ -206,3 +209,5 @@ data class DocumentModel(
     }
 }
 
+fun Document.toModel() =
+    DocumentModel(id,name,created = created, updated = updated, filesCount = filesCount)

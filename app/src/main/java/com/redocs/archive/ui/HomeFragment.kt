@@ -109,10 +109,10 @@ class HomeFragment : Fragment(), EventBusSubscriber {
                 }
             }
             tab {
-                title { R.string.files_tab_title }
+                title { R.string.links_tab_title }
                 fragment {
                     onCreate {
-                        FilesFragment()
+                        LinksFragment()
                     }
                 }
             }

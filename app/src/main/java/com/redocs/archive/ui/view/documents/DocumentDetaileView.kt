@@ -65,8 +65,7 @@ class DocumentDetaileView(
         if(panel.isEnabled && dm.filesCount == 0)
             panel.addView(
                 FloatingActionButton(context).apply {
-                    //setImageIcon()
-                    setBackgroundColor(Color.GREEN)
+                    setImageResource(R.drawable.ic_add_circle_white_24dp)
                     setOnClickListener {
                         onFileAction(DocumentModel.FileModel.EmptyFileModel,Action.ADD)
                     }
