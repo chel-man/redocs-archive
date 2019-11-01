@@ -138,7 +138,7 @@ class Controller(
 
     fun editFile(context: Context, file: DocumentModel.FileModel): Boolean {
 
-        val ed = TextCustomEditor(context,file.name).apply { minLength = 1 }
+        /*val ed = TextCustomEditor(context,file.name).apply { minLength = 1 }
         ModalDialog(
             ModalDialog.SaveDialogConfig(
                 ed,
@@ -161,8 +161,23 @@ class Controller(
                 }
             )
         )
-            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
+            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")*/
+        addFile(context,0)
         return true
+    }
+
+    fun addFile(context: Context, documentId: Long){
+        val rq = Math.random().toInt()
+        (context as ActivityResultSync).listen { responseId ->
+
+        }
+
+        (context as AppCompatActivity).startActivityForResult(
+            Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                type ="*/*"
+            },
+            rq
+        )
     }
 
     private fun saveFileInfo(position: Int, file: FileInfo) {
@@ -190,18 +205,17 @@ class Controller(
 
     private fun openFile(context: Context, f: File) =
 
-        Intent(Intent.ACTION_VIEW).apply {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW).apply {
 
-            // set flag to give temporary permission to external app to use your FileProvider
-            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            // generate URI, I defined authority as the application ID in the Manifest, the last param is file I want to open
-            data = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID, f)
-            // validate that the device can open your File!
-            if (resolveActivity(context.packageManager) != null)
-                context.startActivity(this)
-            else
-                showError(context,"No app to open file ${f.name}")
-        }
+                // set flag to give temporary permission to external app to use your FileProvider
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                // generate URI, I defined authority as the application ID in the Manifest, the last param is file I want to open
+                data = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID, f)
+                // validate that the device can open your File!
+                if (resolveActivity(context.packageManager) == null)
+                    throw Exception("No app to open file ${f.name}")
+            })
 
     private fun loadDictionaryEntriesSync(id: Long) = runBlocking {
         dictionaryRepository.getEntries(id)
@@ -214,6 +228,8 @@ class Controller(
         DocumentModel(
             id,
             name,
+            created,
+            updated,
             filesCount,
             fields.map { it.toModel() }
         )

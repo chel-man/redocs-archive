@@ -33,6 +33,8 @@ class InMemoryDocumentsDataSource : DataSource {
         return data[id.toInt()-1]
     }
 
+    override suspend fun get(ids: List<Long>): Collection<Document> = emptyList()
+
     override suspend fun list(parentId: Long, start: Int, size: Int): Collection<Document> {
         var end = start + size
         if (start > data.size - 1)

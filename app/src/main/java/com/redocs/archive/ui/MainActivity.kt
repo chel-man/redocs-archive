@@ -1,5 +1,7 @@
 package com.redocs.archive.ui
 
+import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -17,9 +19,10 @@ import com.redocs.archive.framework.EventBusSubscriber
 import com.redocs.archive.framework.subscribe
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.ContextActionStoppedEvent
+import com.redocs.archive.ui.utils.ActivityResultSync
 import com.redocs.archive.ui.utils.ContextActionSource
 
-class MainActivity : AppCompatActivity(), EventBusSubscriber {
+class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync {
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navController: NavController
@@ -167,6 +170,16 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber {
                         .fragments[0]as? BackButtonInterceptor)?.
                             onBackPressed() != true)
             super.onBackPressed()
+    }
+
+    private var listener: (requestCode: Int, resultCode: Int, data: Intent?)->Unit = {_, _, _ ->  }
+    override fun listen(listener: (requestCode: Int, resultCode: Int, data: Intent?) -> Unit) {
+        this.listener = listener
+    }
+
+    @SuppressLint("MissingSuperCall")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        listener(requestCode, resultCode, data)
     }
 }
 

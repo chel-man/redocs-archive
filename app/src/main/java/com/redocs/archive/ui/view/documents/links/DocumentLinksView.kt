@@ -6,6 +6,7 @@ import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.view.setMargins
 import com.redocs.archive.ui.view.list.ListRow
 import com.redocs.archive.ui.view.list.ListView
+import com.redocs.archive.ui.view.list.SimpleList
 
 class DocumentLinksView (
     context: Context,
@@ -31,7 +32,7 @@ class DocumentLinksView (
                 }
             }
             else
-                DocumentList(context)
+                DocumentLinksList(context)
         )
     }
 
@@ -39,15 +40,15 @@ class DocumentLinksView (
 
         removeViewAt(0)
         model = lm
-        addView(DocumentList(context))
+        addView(DocumentLinksList(context))
 
     }
 
 }
 
-class DocumentList(
+class DocumentLinksList(
     context: Context
-) : ListView<ListRow>(
+) : SimpleList<ListRow>(
     context
 ){
 
