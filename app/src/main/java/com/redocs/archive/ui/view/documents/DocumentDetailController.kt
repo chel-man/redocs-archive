@@ -1,5 +1,6 @@
 package com.redocs.archive.ui.view.documents
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -166,10 +167,25 @@ class Controller(
         return true
     }
 
-    fun addFile(context: Context, documentId: Long){
+    fun addFile(context: Context, documentId: Long, success: ()->Unit){
         val rq = Math.random().toInt()
-        (context as ActivityResultSync).listen { responseId ->
-
+        (context as ActivityResultSync).listen { requestCode, _, data ->
+            if(requestCode == rq) {
+                data?.data?.also { uri ->
+                    scope.launch(Dispatchers.IO) {
+                        (context as Activity)
+                            .contentResolver
+                            .openInputStream(uri)?.use { inputStream ->
+                                try {
+                                    filesRepository.upload(documentId, inputStream)
+                                    success()
+                                }catch (ex:java.lang.Exception){
+                                    showError(context,ex)
+                                }
+                            }
+                    }
+                }
+            }
         }
 
         (context as AppCompatActivity).startActivityForResult(
