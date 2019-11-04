@@ -10,4 +10,5 @@ interface DataSource {
     suspend fun getContent(id: Long): InputStream
     suspend fun update(file: FileInfo)
     suspend fun delete(file: FileInfo)
+    suspend fun upload(documentId: Long, name: String, inputStream: InputStream)
 }

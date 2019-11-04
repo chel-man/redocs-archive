@@ -1,11 +1,14 @@
 package com.redocs.archive.framework
 
 import android.util.Log
+import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.data.documents.DataSource
 import com.redocs.archive.domain.dictionary.Dictionary
 import com.redocs.archive.domain.document.Document
 import com.redocs.archive.domain.document.FieldType
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Date
 
 class InMemoryDocumentsDataSource : DataSource {
@@ -13,24 +16,31 @@ class InMemoryDocumentsDataSource : DataSource {
     private val data = mutableListOf<Document>()
 
     init {
-        for(i in 1..200L)
-            data += Document(i,"Document $i",
+        for (i in 1..200L)
+            data += Document(
+                i, "Document $i",
                 listOf(
-                    Document.Field(1,"Text",FieldType.Text,
-                        "$i : Text value Text value Text value Text value Text value Text value"),
-                    Document.Field(3,"long Text",FieldType.LongText,
-                        "Text value Text value Text value Text value Text value Text value Text value Text value Text value"),
-                    Document.Field(2,"Integer long title",FieldType.Integer,12547),
-                    Document.Field(4,"Decimal",FieldType.Decimal,365.457f),
-                    Document.Field(5,"Date",FieldType.Date, Date()),
-                    Document.DictionaryField(6,"Dictionary",1, Dictionary.Entry(1,"Entry 1"))
+                    Document.Field(
+                        1, "Text", FieldType.Text,
+                        "$i : Text value Text value Text value Text value Text value Text value"
+                    ),
+                    Document.Field(
+                        3, "long Text", FieldType.LongText,
+                        "Text value Text value Text value Text value Text value Text value Text value Text value Text value"
+                    ),
+                    Document.Field(2, "Integer long title", FieldType.Integer, 12547),
+                    Document.Field(4, "Decimal", FieldType.Decimal, 365.457f),
+                    Document.Field(5, "Date", FieldType.Date, Date()),
+                    Document.DictionaryField(6, "Dictionary", 1, Dictionary.Entry(1, "Entry 1"))
                 ),
-                (i-1).toInt(),Date(), Date())
+                0,
+                Date(), Date()
+            )
     }
 
     override suspend fun get(id: Long): Document {
         delay(500)
-        return data[id.toInt()-1]
+        return data[id.toInt()-1]?.copy(filesCount = ArchiveApplication.filesDataSource.list(id).size)
     }
 
     override suspend fun get(ids: List<Long>): Collection<Document> = emptyList()

@@ -3,7 +3,8 @@ package com.redocs.archive.domain.file
 data class FileInfo (
     val id: Long,
     val name: String,
-    val size: Long
+    val size: Long,
+    val intName: String? = null
 ){
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

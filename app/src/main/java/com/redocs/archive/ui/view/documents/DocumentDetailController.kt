@@ -3,8 +3,10 @@ package com.redocs.archive.ui.view.documents
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import android.view.View
+import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.MutableLiveData
@@ -139,7 +141,7 @@ class Controller(
 
     fun editFile(context: Context, file: DocumentModel.FileModel): Boolean {
 
-        /*val ed = TextCustomEditor(context,file.name).apply { minLength = 1 }
+        val ed = TextCustomEditor(context,file.name).apply { minLength = 1 }
         ModalDialog(
             ModalDialog.SaveDialogConfig(
                 ed,
@@ -162,8 +164,7 @@ class Controller(
                 }
             )
         )
-            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")*/
-        addFile(context,0)
+            .show((context as AppCompatActivity).supportFragmentManager, "CustomEditor")
         return true
     }
 
@@ -171,15 +172,17 @@ class Controller(
         val rq = Math.random().toInt()
         (context as ActivityResultSync).listen { requestCode, _, data ->
             if(requestCode == rq) {
-                data?.data?.also { uri ->
+                data?.data?.let { uri ->
+
                     scope.launch(Dispatchers.IO) {
                         (context as Activity)
                             .contentResolver
                             .openInputStream(uri)?.use { inputStream ->
                                 try {
-                                    filesRepository.upload(documentId, inputStream)
+                                    filesRepository.upload(documentId,uri.lastPathSegment,inputStream)
                                     success()
-                                }catch (ex:java.lang.Exception){
+                                }catch (ex: Exception){
+                                    Log.e("#DDC","ERROR: ${ex.localizedMessage}")
                                     showError(context,ex)
                                 }
                             }

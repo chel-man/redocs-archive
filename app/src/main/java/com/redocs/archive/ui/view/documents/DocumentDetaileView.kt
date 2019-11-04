@@ -2,6 +2,7 @@ package com.redocs.archive.ui.view.documents
 
 import android.content.Context
 import android.graphics.Color
+import android.text.Layout
 import android.view.*
 import android.view.Gravity.CENTER
 import android.view.Gravity.END
@@ -73,6 +74,10 @@ class DocumentDetaileView(
 
     }
 
+    private fun addFile(){
+        controller.addFile(context,dm.id,{})
+    }
+
     private fun createStackPanel(): StackPanel {
 
         return StackPanel(context, dm.activePanelPos).apply {
@@ -108,6 +113,7 @@ class DocumentDetaileView(
 
     private fun onFileAction(fm: DocumentModel.FileModel, action: Action) {
         when(action){
+            Action.ADD -> addFile()
             Action.VIEW -> controller.viewFile(context,fm)
             Action.DELETE -> controller.deleteFile(fm)
         }

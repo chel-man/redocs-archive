@@ -34,11 +34,11 @@ abstract class AbstractCustomEditor<T>(
 
 class TextCustomEditor(
     context: Context,
-    value: String?
+    value: String
 ) : AbstractCustomEditor<String>(context,value){
 
-    override val value: String?
-        get() = text?.toString()
+    override val value: String
+        get() = if(text == null) "" else text.toString()
 
     var minLength: Int = 0
         set(value){

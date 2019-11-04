@@ -13,6 +13,7 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.*
 import com.google.android.material.navigation.NavigationView
+import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.framework.EventBusSubscriber
@@ -31,6 +32,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
 
     init {
         subscribe(ContextActionRequestEvent::class.java)
+        ArchiveApplication.context = this
     }
 
     override fun onEvent(evt: EventBus.Event<*>) {
