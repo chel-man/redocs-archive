@@ -15,7 +15,7 @@
 
     <string name="app_name">Redocs Archive</string>
     <!-- Menu strings -->
-    <string name="settings">Settings</string>
+    <string name="settings_panel">Settings</string>
     <string name="home_panel">Home</string>
     <string name="search_panel">Search</string>
     <string name="types_panel">Types Panel</string>
@@ -38,4 +38,6 @@
     <string name="dialog_no_button_title">No</string>
     <string name="dialog_cancel_button_title">Cancel</string>
     <string name="dialog_save_button_title">Save</string>
+
+    <string name="exit_app_by_back_button" >Press back one time more to exit</string>
 </resources>

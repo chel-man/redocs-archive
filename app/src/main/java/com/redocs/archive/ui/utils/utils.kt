@@ -14,7 +14,7 @@ fun showError(context: Context, ex: Exception) {
 
 fun showError(context: Context, msg: String) {
     try {
-        Toast.makeText(context, msg, Toast.LENGTH_SHORT)
+        Toast.makeText(context, msg, Toast.LENGTH_LONG)
             .show()
     }catch (ex: Exception){}
 }
@@ -29,7 +29,7 @@ fun convertDpToPixel(dp: Int, context: Context): Int {
     return dp * getMetrix(context).scaledDensity.toInt()
 }
 
-fun spToPx(sp: Float, context: Context): Int {
+fun convertSpToPx(sp: Float, context: Context): Int {
     return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, getMetrix(context)).toInt()
 }
 

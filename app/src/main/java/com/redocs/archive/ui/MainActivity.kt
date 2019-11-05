@@ -3,6 +3,7 @@ package com.redocs.archive.ui
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +23,7 @@ import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.ContextActionStoppedEvent
 import com.redocs.archive.ui.utils.ActivityResultSync
 import com.redocs.archive.ui.utils.ContextActionSource
+import com.redocs.archive.ui.utils.showError
 
 class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync {
 
@@ -32,13 +34,18 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
 
     init {
         subscribe(ContextActionRequestEvent::class.java)
-        ArchiveApplication.context = this
     }
 
     override fun onEvent(evt: EventBus.Event<*>) {
         when(evt){
             is ContextActionRequestEvent -> startActionMode(evt.data)
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if(ArchiveApplication.filesDir == null)
+            ArchiveApplication.filesDir = filesDir.canonicalPath
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -164,17 +171,30 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
             })
     }
 
+    private var pressed = 0
+
     override fun onBackPressed() {
 
-        if((supportFragmentManager
-                .fragments[0]
-                    .childFragmentManager
-                        .fragments[0]as? BackButtonInterceptor)?.
-                            onBackPressed() != true)
+        for(f in supportFragmentManager.fragments) {
+            for (cfm in f.childFragmentManager.fragments) {
+                if ((cfm as? BackButtonInterceptor)?.onBackPressed() == true)
+                    return
+            }
+        }
+
+        if(pressed==0) {
+            showError(this, resources.getString(R.string.exit_app_by_back_button))
+            Handler().postDelayed({
+                pressed = 0
+            },2000)
+            pressed++
+        }
+        else
             super.onBackPressed()
     }
 
     private var listener: (requestCode: Int, resultCode: Int, data: Intent?)->Unit = {_, _, _ ->  }
+
     override fun listen(listener: (requestCode: Int, resultCode: Int, data: Intent?) -> Unit) {
         this.listener = listener
     }

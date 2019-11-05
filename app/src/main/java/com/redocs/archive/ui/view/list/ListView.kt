@@ -90,7 +90,7 @@ open class ListView<T: ListRow>(
                     if (tvo.isAlive)
                         tvo.removeOnGlobalLayoutListener(this)
                     screenRows = this@ListView.height /
-                            com.redocs.archive.ui.utils.spToPx(
+                            com.redocs.archive.ui.utils.convertSpToPx(
                                 (adapter as ListAdapter<T>).textSize,
                                 context)
                     //Log.d("#LISTVIEW","init screen rows: $screenRows")
@@ -102,7 +102,7 @@ open class ListView<T: ListRow>(
 
         Handler().post{
             screenRows = this@ListView.height /
-                    com.redocs.archive.ui.utils.spToPx(
+                    com.redocs.archive.ui.utils.convertSpToPx(
                         (adapter as ListAdapter<T>).textSize,
                         context)
             //Log.d("#LISTVIEW","init screen rows: $screenRows")

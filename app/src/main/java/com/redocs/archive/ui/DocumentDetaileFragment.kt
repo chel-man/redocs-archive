@@ -36,7 +36,7 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
         ArchiveApplication.documentsDataSource
     )
     private val dictsRepo = DictionaryRepository(
-        ArchiveApplication.dictinaryDataSource
+        ArchiveApplication.dictionaryDataSource
     )
 
     init {
@@ -70,6 +70,7 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
                 }
                 doc?.id != vm.documentId ->
                     startLoadDocument()
+
                 else ->
                     createView(getController(), doc)
             }

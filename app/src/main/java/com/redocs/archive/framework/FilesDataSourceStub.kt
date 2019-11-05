@@ -1,6 +1,5 @@
 package com.redocs.archive.framework
 
-import android.content.Context
 import android.util.Log
 import com.redocs.archive.data.files.DataSource
 import com.redocs.archive.domain.file.FileInfo
@@ -11,16 +10,16 @@ import kotlinx.coroutines.withContext
 import java.io.*
 import java.net.URL
 
-class FilesDataSourceStub(private val context: Context) : DataSource {
+class FilesDataSourceStub(private val filesDir: String) : DataSource {
 
     private val files = mutableListOf<FileInfo>()
     private var maxId = 0L
     private val filesByDocument = mutableMapOf<Long,MutableList<Long>>()
 
     init{
-        for(fn in context.fileList()) {
-            if (fn.startsWith("file_")) {
-                context.deleteFile(fn)
+        for(f in File(filesDir).listFiles()) {
+            if (f.name.startsWith("file_")) {
+                f.delete()
             }
         }
         Log.d("#FDS","FILES CLEARED")
@@ -35,7 +34,7 @@ class FilesDataSourceStub(private val context: Context) : DataSource {
     override suspend fun getContent(id: Long): InputStream = withContext(Dispatchers.IO) {
         val index = files.indexOf(FileInfo(id,"",0))
         if(index > -1){
-            val f = File(context.filesDir,"${files[index].intName}")
+            val f = File(filesDir,"${files[index].intName}")
             if(f.exists())
                 return@withContext FileInputStream(f)
         }
@@ -68,7 +67,7 @@ class FilesDataSourceStub(private val context: Context) : DataSource {
             for((i,pos) in es.value.withIndex()){
                 val fi = files[i]
                 if(fi.id == file.id){
-                    val f = File(context.filesDir,"${fi.intName}")
+                    val f = File(filesDir,"${fi.intName}")
                     if(f.exists())
                         f.delete()
                     es.value.removeAt(i)
@@ -97,7 +96,6 @@ class FilesDataSourceStub(private val context: Context) : DataSource {
                 size += bytes
             }
         }
-
         files += FileInfo(id,name,size,iname)
         var fs = filesByDocument[documentId]
         if(fs == null) {
@@ -109,6 +107,6 @@ class FilesDataSourceStub(private val context: Context) : DataSource {
     }
 
     private fun openFileOutputStream(name: String): OutputStream =
-        FileOutputStream(File(context.filesDir,name))
+        FileOutputStream(File(filesDir,name))
 
 }

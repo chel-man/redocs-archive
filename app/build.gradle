@@ -44,6 +44,7 @@ dependencies {
     implementation project(path: ':data')
     implementation project(path: ':usecases')
     implementation 'androidx.paging:paging-runtime-ktx:2.1.0'
+    implementation 'androidx.preference:preference-ktx:1.1.0'
     /*implementation 'androidx.navigation:navigation-fragment-ktx:2.0.0'
     implementation 'androidx.navigation:navigation-ui-ktx:2.0.0'
     implementation 'androidx.navigation:navigation-safe-args-gradle-plugin:2.0.0'*/

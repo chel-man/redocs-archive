@@ -24,13 +24,20 @@
     <fragment
         android:id="@+id/search_nav_dest"
         android:name="com.redocs.archive.ui.SearchFragment"
+        android:label="@string/search_panel"
         tools:layout="@layout/search_fragment"/>
 
 
     <fragment
             android:id="@+id/types_nav_dest"
             android:name="com.redocs.archive.ui.TypesFragment"
+            android:label="@string/types_panel"
             tools:layout="@layout/types_fragment"/>
+
+    <fragment
+            android:id="@+id/settings_dest"
+            android:name="com.redocs.archive.ui.SettingsFragment"
+            android:label="@string/settings_panel"/>
 
 
 </navigation>

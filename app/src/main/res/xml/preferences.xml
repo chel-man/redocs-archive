@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <Preference
+        app:key="screen_1"
+        app:title="Prefs on Screen 1">
+        <extra
+                android:name="fragment_name"
+                android:value="com.redocs.archive.ui.Screen1SettingsFragment"/>
+    </Preference>
+
+    <PreferenceScreen
+            app:key="screen_2"
+            android:fragment="com.redocs.archive.ui.Screen2SettingsFragment"
+            app:title="Prefs on Screen 2"/>
+
+    <SwitchPreferenceCompat
+            android:key="pref_switch_test"
+            android:defaultValue="false"
+            android:title="Show test"/>
+</PreferenceScreen>

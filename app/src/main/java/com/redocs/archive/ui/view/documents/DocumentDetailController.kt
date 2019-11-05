@@ -6,7 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import android.view.View
-import android.widget.EditText
+import androidx.annotation.MainThread
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.MutableLiveData
@@ -39,19 +39,25 @@ class Controller(
 ) : DocumentControllerInterface {
 
     fun load() {
-        scope.launch {
+        scope.launch(Dispatchers.Default) {
             val id = Math.abs((documentLive.value as DocumentModel).id)
-            documentLive.value = documentRepository.get(id).toModel()
+            updateDocumentModel(documentRepository.get(id).toModel())
         }
     }
+
+    private suspend fun updateDocumentModel(doc:DocumentModel) =
+        withContext(Dispatchers.Main) {
+            documentLive.value = doc
+        }
+
 
     fun showFiles() {
 
         val d = documentLive.value as DocumentModel
         if(d.files.isEmpty())
-            scope.launch {
+            scope.launch(Dispatchers.Default) {
                 val files = filesRepository.list(d.id).map{ it.toModel()}
-                documentLive.value = d.copy(files = files, activePanelPos = 1)
+                updateDocumentModel(d.copy(files = files, activePanelPos = 1))
             }
         else
             documentLive.value = d.copy(activePanelPos = 1)
@@ -113,7 +119,7 @@ class Controller(
     }
 
     fun deleteFile(fm: DocumentModel.FileModel){
-        scope.launch {
+        scope.launch(Dispatchers.Default) {
             filesRepository.delete(fm.toFileInfo())
             refreshFileList()
         }
@@ -168,7 +174,7 @@ class Controller(
         return true
     }
 
-    fun addFile(context: Context, documentId: Long, success: ()->Unit){
+    fun addFile(context: Context, documentId: Long, @MainThread success: ()->Unit = {}){
         val rq = Math.random().toInt()
         (context as ActivityResultSync).listen { requestCode, _, data ->
             if(requestCode == rq) {
@@ -179,11 +185,16 @@ class Controller(
                             .contentResolver
                             .openInputStream(uri)?.use { inputStream ->
                                 try {
-                                    filesRepository.upload(documentId,uri.lastPathSegment,inputStream)
-                                    success()
+                                    filesRepository.upload(documentId,uri.fileName,inputStream)
+                                    refreshFileList()
+                                    withContext(Dispatchers.Main) {
+                                        success()
+                                    }
                                 }catch (ex: Exception){
                                     Log.e("#DDC","ERROR: ${ex.localizedMessage}")
-                                    showError(context,ex)
+                                    withContext(Dispatchers.Main) {
+                                        showError(context, ex)
+                                    }
                                 }
                             }
                     }
@@ -200,19 +211,24 @@ class Controller(
     }
 
     private fun saveFileInfo(position: Int, file: FileInfo) {
-        scope.launch {
+        scope.launch(Dispatchers.Default) {
             filesRepository.update(file)
             refreshFileList()
         }
     }
 
     private suspend fun refreshFileList(){
-        val d = documentLive.value as DocumentModel
-        val files = filesRepository.list(d.id).map{ it.toModel()}
-        documentLive.value = d.copy(
-            files = files,
-            activePanelPos = if(files.isEmpty()) 0 else 1,
-            filesCount = files.size)
+        withContext(Dispatchers.Default) {
+            val d = documentLive.value as DocumentModel
+            val files = filesRepository.list(d.id).map { it.toModel() }
+            updateDocumentModel(
+                d.copy(
+                    files = files,
+                    activePanelPos = if (files.isEmpty()) 0 else 1,
+                    filesCount = files.size
+                )
+            )
+        }
     }
 
     private fun loadDictionaryEntries(editor: DictionaryEditor, id: Long) = scope.launch {
@@ -320,3 +336,5 @@ class Controller(
 
 private fun DocumentModel.FileModel.toFileInfo() =
     FileInfo(id,name,size)
+
+private val Uri.fileName get() = lastPathSegment.split("/").last()

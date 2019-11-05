@@ -53,6 +53,7 @@ class DocumentDetaileView(
         else{
             panel = createStackPanel()
             addView(panel)
+            addFabs()
         }
     }
 
@@ -62,7 +63,13 @@ class DocumentDetaileView(
         dm = model
         panel = createStackPanel()
         addView(panel)
+
         checkActionMode()
+        addFabs()
+
+    }
+
+    private fun addFabs(){
         if(panel.isEnabled && dm.filesCount == 0)
             panel.addView(
                 FloatingActionButton(context).apply {
@@ -71,7 +78,6 @@ class DocumentDetaileView(
                         onFileAction(DocumentModel.FileModel.EmptyFileModel,Action.ADD)
                     }
                 })
-
     }
 
     private fun addFile(){
