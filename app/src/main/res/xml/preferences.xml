@@ -3,17 +3,14 @@
         xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <Preference
-        app:key="screen_1"
-        app:title="Prefs on Screen 1">
-        <extra
-                android:name="fragment_name"
-                android:value="com.redocs.archive.ui.Screen1SettingsFragment"/>
-    </Preference>
+        android:key="Screen1"
+        app:title="Prefs on Screen 1"
+        app:fragment="com.redocs.archive.ui.SettingsFragment$Screen1Fragment" />
 
-    <PreferenceScreen
-            app:key="screen_2"
-            android:fragment="com.redocs.archive.ui.Screen2SettingsFragment"
-            app:title="Prefs on Screen 2"/>
+    <Preference
+            app:key="Screen2"
+            app:title="Prefs on Screen 2"
+            app:fragment="com.redocs.archive.ui.SettingsFragment$Screen2Fragment"/>
 
     <SwitchPreferenceCompat
             android:key="pref_switch_test"

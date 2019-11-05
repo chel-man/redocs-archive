@@ -37,7 +37,7 @@
     <fragment
             android:id="@+id/settings_dest"
             android:name="com.redocs.archive.ui.SettingsFragment"
-            android:label="@string/settings_panel"/>
-
+            android:label="@string/settings_panel">
+    </fragment>
 
 </navigation>

@@ -4,15 +4,22 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.*
+import androidx.preference.Preference
+import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.PreferenceScreen
 import com.google.android.material.navigation.NavigationView
 import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
@@ -175,14 +182,11 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
 
     override fun onBackPressed() {
 
-        for(f in supportFragmentManager.fragments) {
-            for (cfm in f.childFragmentManager.fragments) {
-                if ((cfm as? BackButtonInterceptor)?.onBackPressed() == true)
-                    return
-            }
-        }
+        var (backStackEntryCount,processed) = traverseChildFragment(supportFragmentManager)
+        if(processed)
+            return
 
-        if(pressed==0) {
+        if(backStackEntryCount == 0 && pressed==0) {
             showError(this, resources.getString(R.string.exit_app_by_back_button))
             Handler().postDelayed({
                 pressed = 0
@@ -203,6 +207,18 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         listener(requestCode, resultCode, data)
     }
+
+}
+
+private fun traverseChildFragment(fm: FragmentManager): Pair<Int,Boolean>{
+    var bces = fm.backStackEntryCount
+    for(f in fm.fragments){
+        val (fbses,fproc) = traverseChildFragment(f.childFragmentManager)
+        if(fproc)
+            return 0 to true
+        bces += fbses
+    }
+    return bces to false
 }
 
 /*interface ContextActionModeController {
