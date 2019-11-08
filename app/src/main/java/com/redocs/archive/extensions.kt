@@ -1,5 +1,6 @@
 package com.redocs.archive
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.Paint
 import android.graphics.PorterDuff
@@ -19,6 +20,7 @@ import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.redocs.archive.ui.utils.LocaleManager
 import com.redocs.archive.ui.utils.convertDpToPixel
 
 fun Menu.setItemEnabled(id: Int, enabled: Boolean, @ColorInt colorId: Int) {
@@ -88,3 +90,6 @@ fun View.addRipple() = with(TypedValue()) {
 }
 
 fun View.dp48pixels() = convertDpToPixel(48,context)
+
+val Activity.localeManager get() = LocaleManager
+val Fragment.localeManager get() = LocaleManager

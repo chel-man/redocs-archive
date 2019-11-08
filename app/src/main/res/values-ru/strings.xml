@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Redocs Archive</string>
+    <!-- Menu strings -->
+    <string name="settings_panel">Настройки</string>
+    <string name="home_panel">Главная</string>
+    <string name="search_panel">Поиск</string>
+    <string name="types_panel">Типы</string>
+
+    <string name="documents_tab_title">Документы</string>
+    <string name="structure_tab_title">Структура</string>
+    <string name="documents_tab_document">Документ</string>
+    <string name="links_tab_title">Связи</string>
+</resources>

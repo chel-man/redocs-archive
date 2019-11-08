@@ -1,36 +1,38 @@
 package com.redocs.archive.ui
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.drawerlayout.widget.DrawerLayout
-import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.*
-import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.PreferenceScreen
+import androidx.preference.PreferenceManager
 import com.google.android.material.navigation.NavigationView
 import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.framework.EventBusSubscriber
 import com.redocs.archive.framework.subscribe
+import com.redocs.archive.localeManager
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.ContextActionStoppedEvent
 import com.redocs.archive.ui.utils.ActivityResultSync
 import com.redocs.archive.ui.utils.ContextActionSource
+import com.redocs.archive.ui.utils.LocaleManager
 import com.redocs.archive.ui.utils.showError
+import java.util.*
 
 class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync {
 
@@ -55,8 +57,13 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
             ArchiveApplication.filesDir = filesDir.canonicalPath
     }
 
+    override fun attachBaseContext(newBase: Context?) {
+        super.attachBaseContext(localeManager.getLocalizedContext(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.main_activity)
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
@@ -100,6 +107,12 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
     private fun setupNavigationMenu(navController: NavController, sideNavView:NavigationView) {
         /*In split screen mode, you can drag this view out from the left
             This does NOT modify the actionbar*/
+        navController.addOnDestinationChangedListener { controller, destination, arguments ->
+            Log.d("#MA","dest changed: ${destination.id}")
+            if(destination.id == R.id.settings_dest) {
+                startActivity(Intent(this,SettingsActivity::class.java))
+            }
+        }
         sideNavView.setupWithNavController(navController)
     }
 

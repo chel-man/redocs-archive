@@ -1,10 +1,12 @@
 package com.redocs.archive.ui.utils
 
 import android.content.Context
+import android.content.res.Configuration
 import android.text.format.DateFormat
 import android.util.DisplayMetrics
 import android.util.TypedValue
 import android.widget.Toast
+import androidx.preference.PreferenceManager
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -74,4 +76,38 @@ enum class Action {
     VIEW,
     DELETE,
     ADD
+}
+
+class LocaleManager {
+
+    companion object {
+
+        const val PREF_LANGUAGE_KEY = "language"
+
+        fun getLocalizedContext(context: Context?): Context? {
+            return setLocale(context)
+        }
+
+        private fun setLocale(context: Context?): Context? {
+            var newContex = context
+            val defLang = Locale.getDefault().language
+            val sl =
+                PreferenceManager.getDefaultSharedPreferences(context)
+                    .getString(PREF_LANGUAGE_KEY, defLang)
+            if (defLang != sl) {
+                newContex = updateResources(context, sl)
+            }
+
+            return newContex
+        }
+
+        private fun updateResources(context: Context?, language: String): Context? {
+            val locale = Locale(language)
+            Locale.setDefault(locale)
+            val res = context?.resources
+            val config = Configuration(res?.configuration)
+            config.setLocale(locale)
+            return context?.createConfigurationContext(config);
+        }
+    }
 }

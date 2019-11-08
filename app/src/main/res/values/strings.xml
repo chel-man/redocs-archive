@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~ Copyright (C) 2018 The Android Open Source Project
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -39,5 +38,32 @@
     <string name="dialog_cancel_button_title">Cancel</string>
     <string name="dialog_save_button_title">Save</string>
 
-    <string name="exit_app_by_back_button" >Press back one time more to exit</string>
+    <string name="exit_app_by_back_button">Press back one time more to exit</string>
+
+    <!--  Settings  -->
+    <string name="settings_select_language_title">Language</string>
+    <string-array name="settings_languages_list">
+        <item>English</item>
+        <item>Русский</item>
+    </string-array>
+    <string-array name="settings_languages_list_values">
+        <item>en</item>
+        <item>ru</item>
+    </string-array>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Preference Titles -->
+    <string name="messages_header">Messages</string>
+    <string name="sync_header">Sync</string>
+
+    <!-- Messages Preferences -->
+    <string name="signature_title">Your signature</string>
+    <string name="reply_title">Default reply action</string>
+
+    <!-- Sync Preferences -->
+    <string name="sync_title">Sync email periodically</string>
+    <string name="attachment_title">Download incoming attachments</string>
+    <string name="attachment_summary_on">Automatically download attachments for incoming emails
+    </string>
+    <string name="attachment_summary_off">Only download attachments when manually requested</string>
 </resources>

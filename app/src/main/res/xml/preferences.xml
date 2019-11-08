@@ -3,9 +3,9 @@
         xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <Preference
-        android:key="Screen1"
-        app:title="Prefs on Screen 1"
-        app:fragment="com.redocs.archive.ui.SettingsFragment$Screen1Fragment" />
+        app:key="language"
+        app:title="@string/settings_select_language_title"
+        app:fragment="com.redocs.archive.ui.SettingsFragment$SelectLanguageFragment" />
 
     <Preference
             app:key="Screen2"
