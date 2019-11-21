@@ -13,7 +13,14 @@
             app:fragment="com.redocs.archive.ui.SettingsFragment$Screen2Fragment"/>
 
     <SwitchPreferenceCompat
-            android:key="pref_switch_test"
-            android:defaultValue="false"
-            android:title="Show test"/>
+            app:key="sync"
+            app:title="@string/sync_title" />
+
+    <SwitchPreferenceCompat
+            app:dependency="sync"
+            app:key="attachment"
+            app:summaryOff="@string/attachment_summary_off"
+            app:summaryOn="@string/attachment_summary_on"
+            app:title="@string/attachment_title" />
+
 </PreferenceScreen>

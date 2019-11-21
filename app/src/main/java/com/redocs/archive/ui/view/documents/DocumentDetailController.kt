@@ -176,7 +176,7 @@ class Controller(
 
     fun addFile(context: Context, documentId: Long, @MainThread success: ()->Unit = {}){
         val rq = Math.random().toInt()
-        (context as ActivityResultSync).listen { requestCode, _, data ->
+        (context as ActivityResultSync).setActivityResultListener { requestCode, _, data ->
             if(requestCode == rq) {
                 data?.data?.let { uri ->
 

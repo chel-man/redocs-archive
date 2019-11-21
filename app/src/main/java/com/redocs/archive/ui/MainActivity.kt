@@ -1,24 +1,20 @@
 package com.redocs.archive.ui
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Handler
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
-import androidx.appcompat.widget.Toolbar
+import androidx.core.view.iterator
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.FragmentManager
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.*
-import androidx.preference.PreferenceManager
 import com.google.android.material.navigation.NavigationView
 import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
@@ -30,15 +26,13 @@ import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.ContextActionStoppedEvent
 import com.redocs.archive.ui.utils.ActivityResultSync
 import com.redocs.archive.ui.utils.ContextActionSource
-import com.redocs.archive.ui.utils.LocaleManager
 import com.redocs.archive.ui.utils.showError
-import java.util.*
+import kotlinx.android.synthetic.main.main_activity.*
 
 class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync {
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navController: NavController
-    private lateinit var sideNavView: NavigationView
     private lateinit var appBarConfiguration : AppBarConfiguration
 
     init {
@@ -66,37 +60,23 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
 
         setContentView(R.layout.main_activity)
 
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        val toolbar = toolbar
         setSupportActionBar(toolbar)
 
-        val host: NavHostFragment = supportFragmentManager
-                .findFragmentById(R.id.host_fragment) as NavHostFragment? ?: return
+        val host: NavHostFragment = host_fragment as NavHostFragment? ?: return
 
         // Set up Action Bar
         navController = host.navController
 
-        drawerLayout  = findViewById(R.id.drawer_layout)
+        drawerLayout  = drawer_layout
         appBarConfiguration = AppBarConfiguration(
-                setOf(R.id.home_nav_dest),
+                setOf(R.id.home_nav_dest,R.id.login_nav_dest),
                 drawerLayout)
 
         setupActionBar(navController, appBarConfiguration)
-
-        sideNavView=findViewById(R.id.nav_view)
-        setupNavigationMenu(navController,sideNavView)
+        setupNavigationMenu(navController,nav_view)
         //setupBottomNavMenu(navController)
 
-        /*navController.addOnDestinationChangedListener { _, destination, _ ->
-            val dest: String = try {
-                resources.getResourceName(destination.id)
-            } catch (e: Resources.NotFoundException) {
-                Integer.toString(destination.id)
-            }
-
-            Toast.makeText(this@MainActivity, "Navigated to $dest",
-                    Toast.LENGTH_SHORT).show()
-            Log.d("NavigationActivity", "Navigated to $dest")
-        }*/
     }
 
     /*private fun setupBottomNavMenu(navController: NavController) {
@@ -104,13 +84,24 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
         bottomNav?.setupWithNavController(navController)
     }*/
 
+    private var isLoggedIn = false
+
     private fun setupNavigationMenu(navController: NavController, sideNavView:NavigationView) {
         /*In split screen mode, you can drag this view out from the left
             This does NOT modify the actionbar*/
+        sideNavView.menu.findItem(R.id.settings_menu).setOnMenuItemClickListener {
+            drawerLayout.closeDrawers()
+            startActivity(Intent(this,SettingsActivity::class.java))
+            true
+        }
+
         navController.addOnDestinationChangedListener { controller, destination, arguments ->
-            Log.d("#MA","dest changed: ${destination.id}")
-            if(destination.id == R.id.settings_dest) {
-                startActivity(Intent(this,SettingsActivity::class.java))
+            if(destination.id != R.id.login_nav_dest){
+                if(!isLoggedIn) {
+                    isLoggedIn = true
+                    for(mi in sideNavView.menu)
+                        mi.isEnabled = true
+                }
             }
         }
         sideNavView.setupWithNavController(navController)
@@ -195,7 +186,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
 
     override fun onBackPressed() {
 
-        var (backStackEntryCount,processed) = traverseChildFragment(supportFragmentManager)
+        var (backStackEntryCount,processed) = traverseChildFragments(supportFragmentManager)
         if(processed)
             return
 
@@ -212,7 +203,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
 
     private var listener: (requestCode: Int, resultCode: Int, data: Intent?)->Unit = {_, _, _ ->  }
 
-    override fun listen(listener: (requestCode: Int, resultCode: Int, data: Intent?) -> Unit) {
+    override fun setActivityResultListener(listener: (requestCode: Int, resultCode: Int, data: Intent?) -> Unit) {
         this.listener = listener
     }
 
@@ -223,10 +214,10 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
 
 }
 
-private fun traverseChildFragment(fm: FragmentManager): Pair<Int,Boolean>{
+private fun traverseChildFragments(fm: FragmentManager): Pair<Int,Boolean>{
     var bces = fm.backStackEntryCount
     for(f in fm.fragments){
-        val (fbses,fproc) = traverseChildFragment(f.childFragmentManager)
+        val (fbses,fproc) = traverseChildFragments(f.childFragmentManager)
         if(fproc)
             return 0 to true
         bces += fbses

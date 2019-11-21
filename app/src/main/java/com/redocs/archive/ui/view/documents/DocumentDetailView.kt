@@ -2,7 +2,6 @@ package com.redocs.archive.ui.view.documents
 
 import android.content.Context
 import android.graphics.Color
-import android.text.Layout
 import android.view.*
 import android.view.Gravity.CENTER
 import android.view.Gravity.END
@@ -23,7 +22,7 @@ import com.redocs.archive.ui.view.panels.StackPanel
 import java.util.*
 
 
-class DocumentDetaileView(
+class DocumentDetailView(
     context: Context,
     private val controller: Controller,
     private var dm: DocumentModel
@@ -69,26 +68,28 @@ class DocumentDetaileView(
 
     }
 
+    private fun createAddFileButton() =
+        FloatingActionButton(context).apply {
+            setImageResource(R.drawable.ic_add_white_24_dp)
+            setOnClickListener {
+                onFileAction(DocumentModel.FileModel.EmptyFileModel,Action.ADD)
+            }
+        }
+
     private fun addFabs(){
         if(panel.isEnabled && dm.filesCount == 0)
-            panel.addView(
-                FloatingActionButton(context).apply {
-                    setImageResource(R.drawable.ic_add_circle_white_24dp)
-                    setOnClickListener {
-                        onFileAction(DocumentModel.FileModel.EmptyFileModel,Action.ADD)
-                    }
-                })
+            panel.addView(createAddFileButton())
     }
 
     private fun addFile(){
         controller.addFile(context,dm.id,{})
     }
 
-    private fun createStackPanel(): StackPanel {
+    private fun createStackPanel(): StackPanel =
 
-        return StackPanel(context, dm.activePanelPos).apply {
+        StackPanel(context, dm.activePanelPos).apply {
 
-            addPanel("Поля",FieldListView(
+            addPanel("Attributes",FieldListView(
                 context,
                 dm.fields,
                 ::editField,
@@ -96,7 +97,7 @@ class DocumentDetaileView(
             ))
 
             if(dm.filesCount > 0) {
-                val fl = FileListView(context).apply {
+                val fl = FileListView(context, createAddFileButton()).apply {
                     actionListener = ::onFileAction
                     longClickListener = ::editFile
                 }
@@ -113,8 +114,6 @@ class DocumentDetaileView(
                 else
                     controller.showFiles()
             }
-        }
-
     }
 
     private fun onFileAction(fm: DocumentModel.FileModel, action: Action) {
@@ -167,7 +166,8 @@ class DocumentDetaileView(
     }
 
     private class FileListView(
-        context: Context
+        context: Context,
+        private val addButton: ImageButton
     ) : LinearLayoutCompat(
         context
     ) {
@@ -217,7 +217,17 @@ class DocumentDetaileView(
                     }
 
                     removeViewAt(0)
-                    addView(tl)
+                    addView(ScrollView(context).apply {
+                        layoutParams = LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            1f)
+                        addView(tl)
+                    })
+                    addView(
+                        FrameLayout(context).apply {
+                            addView(addButton)
+                        })
                 }
         }
 
@@ -226,10 +236,12 @@ class DocumentDetaileView(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.MATCH_PARENT
             )
+            orientation = VERTICAL
             addView(ProgressBar(context).apply {
                 isIndeterminate = true
             })
 
+            //(addButton.parent as? ViewGroup)?.removeView(addButton)
         }
 
         private class FileListHeader(

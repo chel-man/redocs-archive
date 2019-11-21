@@ -93,3 +93,10 @@ fun View.dp48pixels() = convertDpToPixel(48,context)
 
 val Activity.localeManager get() = LocaleManager
 val Fragment.localeManager get() = LocaleManager
+
+fun View.hideKeyboard(){
+    //Handler().postDelayed({
+        (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+            .hideSoftInputFromWindow(this.windowToken, 0)
+    //},200)
+}

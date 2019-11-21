@@ -3,11 +3,7 @@ package com.redocs.archive.ui
 import android.app.Activity
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
-import android.view.View
 import androidx.annotation.MainThread
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
@@ -16,33 +12,7 @@ import com.redocs.archive.localeManager
 import java.util.*
 
 
-class SettingsFragment : PreferenceFragmentCompat(),PreferenceFragmentCompat.OnPreferenceStartFragmentCallback{
-
-    override fun onPreferenceTreeClick(preference: Preference?): Boolean {
-        val r = super.onPreferenceTreeClick(preference)
-        return r
-    }
-
-    override fun onPreferenceStartFragment(
-        caller: PreferenceFragmentCompat?,
-        pref: Preference?
-    ): Boolean {
-        val fm= fragmentManager as FragmentManager
-        val fragment = fm.fragmentFactory.instantiate(
-            activity!!.classLoader,
-            pref!!.fragment)
-        fragment.arguments = pref.extras
-        fragment.setTargetFragment(caller, 0)
-        fm.beginTransaction()
-            .replace((view?.parent as View).id,fragment)
-            .addToBackStack(null)
-            .commit()
-        return true
-    }
-
-    override fun getCallbackFragment(): Fragment {
-        return this
-    }
+class SettingsFragment : PreferenceFragmentCompat(){
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.preferences)
@@ -63,7 +33,6 @@ class SettingsFragment : PreferenceFragmentCompat(),PreferenceFragmentCompat.OnP
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             val context = preferenceManager.context
-            Log.d("#SF", "current activity: $activity  in $context")
             preferenceScreen = preferenceManager
                 .createPreferenceScreen(context).apply {
                     for ((key, title) in preferencesList.entries) {
@@ -81,7 +50,7 @@ class SettingsFragment : PreferenceFragmentCompat(),PreferenceFragmentCompat.OnP
     class Screen2Fragment : PreferenceFragmentCompat() {
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            setPreferencesFromResource(R.xml.prefs_2,rootKey)
+            setPreferencesFromResource(R.xml.messages_preferences,rootKey)
         }
 
     }

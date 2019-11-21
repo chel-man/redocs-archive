@@ -16,18 +16,21 @@
         <item
             android:id="@id/home_nav_dest"
             android:icon="@drawable/ic_home"
-            android:title="@string/home_panel" />
+            android:enabled="false"
+            android:title="@string/home_panel"/>
         <item
             android:id="@id/search_nav_dest"
             android:icon="@android:drawable/ic_menu_search"
+            android:enabled="false"
             android:title="@string/search_panel" />
         <item
-                android:id="@id/types_nav_dest"
-                android:icon="@android:drawable/ic_menu_today"
-                android:title="@string/types_panel" />
+            android:id="@id/types_nav_dest"
+            android:icon="@android:drawable/ic_menu_today"
+            android:enabled="false"
+            android:title="@string/types_panel" />
     </group>
     <item
-        android:id="@+id/settings_dest"
+        android:id="@+id/settings_menu"
         android:icon="@drawable/ic_settings"
         android:title="@string/settings_panel" />
 </menu>

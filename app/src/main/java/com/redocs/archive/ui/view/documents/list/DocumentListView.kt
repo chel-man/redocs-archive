@@ -50,7 +50,6 @@ class DocumentListView(
         }
         selectionListener = {item, selected ->
             if(selected) {
-                var doc = null
                 if(item != null)
                     vm.coroScope.launch {
                         EventBus.publish(DocumentSelectedEvent(item.id))

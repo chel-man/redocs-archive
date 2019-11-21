@@ -6,6 +6,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.redocs.archive.R
+import kotlinx.android.synthetic.main.main_activity.*
 
 
 private const val TITLE_TAG = "settingsActivityTitle"
@@ -19,7 +20,7 @@ class SettingsActivity : AppCompatActivity(),
         if (savedInstanceState == null) {
             supportFragmentManager
                 .beginTransaction()
-                .replace(R.id.settings, HeaderFragment())
+                .replace(R.id.settings, SettingsFragment())
                 .commit()
         } else {
             title = savedInstanceState.getCharSequence(TITLE_TAG)
@@ -30,7 +31,7 @@ class SettingsActivity : AppCompatActivity(),
             }
         }
 
-        val mToolbar = findViewById(R.id.toolbar) as Toolbar
+        val mToolbar = toolbar
         setSupportActionBar(mToolbar)
         val actionBar = supportActionBar
         if (actionBar != null) {
@@ -72,23 +73,5 @@ class SettingsActivity : AppCompatActivity(),
             .commit()
         title = pref.title
         return true
-    }
-
-    class HeaderFragment : PreferenceFragmentCompat() {
-        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            setPreferencesFromResource(R.xml.header_preferences, rootKey)
-        }
-    }
-
-    class MessagesFragment : PreferenceFragmentCompat() {
-        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            setPreferencesFromResource(R.xml.messages_preferences, rootKey)
-        }
-    }
-
-    class SyncFragment : PreferenceFragmentCompat() {
-        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            setPreferencesFromResource(R.xml.sync_preferences, rootKey)
-        }
     }
 }

@@ -1,11 +1,8 @@
 package com.redocs.archive.ui
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.ScrollView
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.view.setMargins
 import androidx.fragment.app.Fragment
@@ -23,12 +20,12 @@ import com.redocs.archive.ui.events.DocumentSelectedEvent
 import com.redocs.archive.ui.utils.ActivablePanel
 import com.redocs.archive.ui.view.documents.*
 
-class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
+class DocumentDetailFragment() : Fragment(), EventBusSubscriber,
     ActivablePanel {
 
     override var isActive = false
 
-    private lateinit var documentDetaileView: DocumentDetaileView
+    private lateinit var documentDetailView: DocumentDetailView
     private var firstActivate = true
     private val vm by activityViewModels<DocumentViewModel>()
     private val filesRepo = Repository(ArchiveApplication.filesDataSource)
@@ -58,8 +55,8 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
                     startLoadDocument()
                 else
                     createView(getController(), doc)
-                startObservingModel()
             }
+            startObservingModel()
         } else {
             when {
 
@@ -100,15 +97,14 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
 
     private fun startObservingModel() {
         with(vm.document) {
-            removeObservers(this@DocumentDetaileFragment)
-            observe(this@DocumentDetaileFragment, androidx.lifecycle.Observer {
-                Log.d("#DF", "model changed")
-                it as DocumentModel
+            removeObservers(this@DocumentDetailFragment)
+            observe(this@DocumentDetailFragment, androidx.lifecycle.Observer {
+                //Log.d("#DF", "model changed: $it")
                 it as DocumentModel
                 if (it.isStub)
                     createView(getController(), it)
                 else
-                    documentDetaileView.update(it)
+                    documentDetailView.update(it)
             })
         }
     }
@@ -117,15 +113,15 @@ class DocumentDetaileFragment() : Fragment(), EventBusSubscriber,
 
         with(view as ViewGroup) {
             try {
-                removeView(documentDetaileView)
+                removeView(documentDetailView)
             } catch (npe: NullPointerException) {
 
             } catch (upa: UninitializedPropertyAccessException) {
             }
 
-            documentDetaileView = DocumentDetaileView(context, controller, dm)
+            documentDetailView = DocumentDetailView(context, controller, dm)
 
-            addView(documentDetaileView)
+            addView(documentDetailView)
         }
     }
 

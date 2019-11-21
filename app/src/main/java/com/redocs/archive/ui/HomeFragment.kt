@@ -104,7 +104,7 @@ class HomeFragment : Fragment(), EventBusSubscriber {
                 title { R.string.documents_tab_document }
                 fragment {
                     onCreate {
-                        DocumentDetaileFragment()
+                        DocumentDetailFragment()
                     }
                 }
             }
