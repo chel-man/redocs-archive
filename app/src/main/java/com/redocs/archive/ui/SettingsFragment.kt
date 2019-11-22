@@ -4,22 +4,36 @@ import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import androidx.annotation.MainThread
-import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.PreferenceManager
+import androidx.preference.*
 import com.redocs.archive.R
 import com.redocs.archive.localeManager
+import com.redocs.archive.ui.utils.LocaleManager
+import com.redocs.archive.ui.utils.LocaleManager.Companion.PREF_LANGUAGE_KEY
 import java.util.*
 
 
 class SettingsFragment : PreferenceFragmentCompat(){
 
+    companion object {
+        const val SERVICE_URL_KEY = "service-url"
+        val restartablePreferenceKeys = listOf<String>(
+            LocaleManager.PREF_LANGUAGE_KEY,
+            SERVICE_URL_KEY
+        )
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.preferences)
         val dsp = PreferenceManager.getDefaultSharedPreferences(context)
-        val defLang = dsp.getString(localeManager.PREF_LANGUAGE_KEY,Locale.getDefault().language)
-        val dl = findPreference<Preference>(localeManager.PREF_LANGUAGE_KEY)
+        val defLang = dsp.getString(LocaleManager.PREF_LANGUAGE_KEY,Locale.getDefault().language)
+        val dl = findPreference<Preference>(LocaleManager.PREF_LANGUAGE_KEY)
         dl?.summary = SelectLanguageFragment.preferencesList[defLang]
+        preferenceScreen.addPreference(
+            EditTextPreference(context).apply {
+                key = SERVICE_URL_KEY
+                title = resources.getString(R.string.settings_service_url_title)
+                summaryProvider = EditTextPreference.SimpleSummaryProvider.getInstance()
+            })
     }
 
     class SelectLanguageFragment : PreferenceFragmentCompat() {
@@ -39,7 +53,7 @@ class SettingsFragment : PreferenceFragmentCompat(){
                         addPreference(
                             StringPreference(
                                 context,
-                                "${localeManager.PREF_LANGUAGE_KEY}_$key",
+                                "${LocaleManager.PREF_LANGUAGE_KEY}_$key",
                                 title)
                         )
                     }

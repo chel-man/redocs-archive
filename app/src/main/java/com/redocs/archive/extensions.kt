@@ -91,8 +91,8 @@ fun View.addRipple() = with(TypedValue()) {
 
 fun View.dp48pixels() = convertDpToPixel(48,context)
 
-val Activity.localeManager get() = LocaleManager
-val Fragment.localeManager get() = LocaleManager
+val Activity.localeManager get() = LocaleManager.instance
+val Fragment.localeManager get() = LocaleManager.instance
 
 fun View.hideKeyboard(){
     //Handler().postDelayed({

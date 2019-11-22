@@ -81,33 +81,25 @@ enum class Action {
 class LocaleManager {
 
     companion object {
-
         const val PREF_LANGUAGE_KEY = "language"
+        val instance = LocaleManager()
+    }
 
-        fun getLocalizedContext(context: Context?): Context? {
-            return setLocale(context)
-        }
+    fun getLocalizedContext(context: Context?): Context? {
+        return setLocale(context)
+    }
 
-        private fun setLocale(context: Context?): Context? {
-            var newContex = context
-            val defLang = Locale.getDefault().language
-            val sl =
-                PreferenceManager.getDefaultSharedPreferences(context)
-                    .getString(PREF_LANGUAGE_KEY, defLang)
-            if (defLang != sl) {
-                newContex = updateResources(context, sl)
-            }
+    private fun setLocale(context: Context?): Context? =
+        updateResources(context,
+            PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(PREF_LANGUAGE_KEY, Locale.getDefault().language))
 
-            return newContex
-        }
-
-        private fun updateResources(context: Context?, language: String): Context? {
-            val locale = Locale(language)
-            Locale.setDefault(locale)
-            val res = context?.resources
-            val config = Configuration(res?.configuration)
-            config.setLocale(locale)
-            return context?.createConfigurationContext(config);
-        }
+    private fun updateResources(context: Context?, language: String): Context? {
+        val locale = Locale(language)
+        Locale.setDefault(locale)
+        val res = context?.resources
+        val config = Configuration(res?.configuration)
+        config.setLocale(locale)
+        return context?.createConfigurationContext(config);
     }
 }

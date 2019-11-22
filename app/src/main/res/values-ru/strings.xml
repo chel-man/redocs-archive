@@ -11,4 +11,5 @@
     <string name="structure_tab_title">Структура</string>
     <string name="documents_tab_document">Документ</string>
     <string name="links_tab_title">Связи</string>
+    <string name="settings_select_language_title">Язык</string>
 </resources>

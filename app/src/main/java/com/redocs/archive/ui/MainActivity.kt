@@ -1,10 +1,12 @@
 package com.redocs.archive.ui
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
@@ -15,6 +17,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.*
+import androidx.preference.PreferenceManager
 import com.google.android.material.navigation.NavigationView
 import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
@@ -28,6 +31,7 @@ import com.redocs.archive.ui.utils.ActivityResultSync
 import com.redocs.archive.ui.utils.ContextActionSource
 import com.redocs.archive.ui.utils.showError
 import kotlinx.android.synthetic.main.main_activity.*
+import java.util.*
 
 class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync {
 
@@ -58,6 +62,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        Log.d("#MA","CREATED")
         setContentView(R.layout.main_activity)
 
         val toolbar = toolbar
@@ -76,7 +81,14 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
         setupActionBar(navController, appBarConfiguration)
         setupNavigationMenu(navController,nav_view)
         //setupBottomNavMenu(navController)
-
+        if(!isServiceUrlSettedUp) {
+            Handler().post {
+                startSettingsActivity()
+                Handler().post {
+                    showError(this,"setup service url first")
+                }
+            }
+        }
     }
 
     /*private fun setupBottomNavMenu(navController: NavController) {
@@ -91,7 +103,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
             This does NOT modify the actionbar*/
         sideNavView.menu.findItem(R.id.settings_menu).setOnMenuItemClickListener {
             drawerLayout.closeDrawers()
-            startActivity(Intent(this,SettingsActivity::class.java))
+            startSettingsActivity()
             true
         }
 
@@ -143,15 +155,28 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
         return navController.navigateUp(appBarConfiguration)
     }
 
-    private var isNavMenuLocked: Boolean = false
-    set(value){
-        drawerLayout.setDrawerLockMode(
-            if(value)
-                DrawerLayout.LOCK_MODE_LOCKED_CLOSED
-            else
-                DrawerLayout.LOCK_MODE_UNLOCKED)
-        field = value
+    private fun startSettingsActivity(){
+        preferencesActivityRequest = Math.random().toInt() and 0xFF
+        startActivityForResult(
+            Intent(this,SettingsActivity::class.java),
+            preferencesActivityRequest)
     }
+
+    private val isServiceUrlSettedUp: Boolean
+        get()=
+            PreferenceManager.getDefaultSharedPreferences(this)
+                .getString(SettingsFragment.SERVICE_URL_KEY, null) != null
+
+
+    private var isNavMenuLocked: Boolean = false
+        set(value){
+            drawerLayout.setDrawerLockMode(
+                if(value)
+                    DrawerLayout.LOCK_MODE_LOCKED_CLOSED
+                else
+                    DrawerLayout.LOCK_MODE_UNLOCKED)
+            field = value
+        }
 
     private fun startActionMode(source: ContextActionSource) {
 
@@ -207,9 +232,21 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
         this.listener = listener
     }
 
+    private var  preferencesActivityRequest = -1234321
+
     @SuppressLint("MissingSuperCall")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        listener(requestCode, resultCode, data)
+        if(requestCode == preferencesActivityRequest) {
+            if (resultCode == Activity.RESULT_OK)
+                preferencesChanged(data)
+        }
+        else
+            listener(requestCode, resultCode, data)
+    }
+
+    private fun preferencesChanged(data: Intent?) {
+        if(data?.getBooleanExtra(SettingsActivity.RESTART_KEY,false) == true)
+            recreate()
     }
 
 }
