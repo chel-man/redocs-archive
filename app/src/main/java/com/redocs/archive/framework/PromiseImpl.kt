@@ -7,7 +7,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-class PromiseImpl <T,R> : SimplePromise<T, R>() {
+open class PromiseImpl <T,R> : SimplePromise<T, R>() {
 
     private var continuation: Continuation<R>? = null
 
@@ -19,11 +19,11 @@ class PromiseImpl <T,R> : SimplePromise<T, R>() {
 
     override fun set(result: R) {
         super.set(result)
-        continuation?.resume(value)
+        continuation?.resume(result)
     }
 
     override fun setException(ex: Exception?) {
         super.setException(ex)
-        continuation?.resumeWithException(Exception(ex))
+        continuation?.resumeWithException(ex as Throwable)
     }
 }
