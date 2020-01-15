@@ -11,7 +11,7 @@ open class PromiseImpl <T,R> : SimplePromise<T, R>() {
 
     private var continuation: Continuation<R>? = null
 
-    suspend fun getAsync(): R {
+    suspend fun wait(): R {
         return suspendCoroutine {
             continuation = it
         }
