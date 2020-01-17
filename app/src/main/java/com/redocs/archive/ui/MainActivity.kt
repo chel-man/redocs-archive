@@ -89,6 +89,9 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
                 }
             }
         }
+        else
+            ArchiveApplication.baseUrl = PreferenceManager.getDefaultSharedPreferences(this)
+                .getString(SettingsFragment.SERVICE_URL_KEY, null)
     }
 
     /*private fun setupBottomNavMenu(navController: NavController) {

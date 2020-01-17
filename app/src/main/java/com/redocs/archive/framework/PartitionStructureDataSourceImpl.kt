@@ -9,15 +9,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class PartitionStructureDataSourceImpl(
-    private val baseUrl: String
+    private val url: String
 ) : PartitionsStructureDataSource
 {
 
     override suspend fun getChildren(id: Long): List<PartitionStructureNode> =
         withContext(Dispatchers.IO) {
             val l = mutableListOf<PartitionStructureNode>()
+            RemoteServiceProxyFactory.log = true
             RemoteServiceProxyFactory
-                .create<ClassificatorService>("$baseUrl/classificator").apply {
+                .create<ClassificatorService>(url).apply {
                     (getContainerChildrenAsync(
                         get(id)
                     ) as PromiseImpl).apply {
