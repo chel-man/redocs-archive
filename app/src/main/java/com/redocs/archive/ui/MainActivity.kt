@@ -92,6 +92,10 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
         else
             ArchiveApplication.baseUrl = PreferenceManager.getDefaultSharedPreferences(this)
                 .getString(SettingsFragment.SERVICE_URL_KEY, null)
+
+        if(savedInstanceState == null) {
+            ArchiveApplication.setup()
+        }
     }
 
     /*private fun setupBottomNavMenu(navController: NavController) {

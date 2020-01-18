@@ -29,9 +29,14 @@ class PartitionStructureDataSourceImpl(
             l
         }
 
-    override suspend fun get(id: Long): PartitionStructureNode {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override suspend fun get(id: Long): PartitionStructureNode =
+        withContext(Dispatchers.IO) {
+            RemoteServiceProxyFactory.log = true
+            RemoteServiceProxyFactory
+                .create<ClassificatorService>(url)
+                .get(id)
+                .toPartitionStructureNode()
+        }
 
     override suspend fun add(parentId: Long, name: String, after: Long): PartitionStructureNode {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.

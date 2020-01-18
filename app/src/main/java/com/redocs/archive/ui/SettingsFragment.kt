@@ -61,13 +61,13 @@ class SettingsFragment : PreferenceFragmentCompat(){
         }
     }
 
-    class Screen2Fragment : PreferenceFragmentCompat() {
+    /*class Screen2Fragment : PreferenceFragmentCompat() {
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.messages_preferences,rootKey)
         }
 
-    }
+    }*/
 
     private class StringPreference(context: Context, key: String, title: String) : Preference(context){
         init {

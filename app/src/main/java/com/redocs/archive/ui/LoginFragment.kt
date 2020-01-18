@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import android.os.Handler
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,6 +16,7 @@ import androidx.navigation.findNavController
 import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
 import com.redocs.archive.hideKeyboard
+import com.redocs.archive.ui.utils.causeException
 import com.redocs.archive.ui.utils.showError
 import kotlinx.coroutines.runBlocking
 
@@ -45,7 +47,7 @@ class LoginView(context: Context) : LinearLayoutCompat(context) {
                 runBlocking {
                     try {
                         ArchiveApplication.securityService.authenticate(
-                            un.toString(), psw.toString())
+                            un.text.toString(), psw.text.toString())
 
                         findNavController().apply {
                             popBackStack(R.id.login_nav_dest, true)
@@ -54,7 +56,9 @@ class LoginView(context: Context) : LinearLayoutCompat(context) {
                             }
                         }
                     } catch (ex: Exception) {
-                        showError(context, ex)
+                        val sex = causeException(ex)
+                        Log.e("#LOGIN","$sex",sex)
+                        showError(context, sex)
                         isEnabled = true
                     }
                 }

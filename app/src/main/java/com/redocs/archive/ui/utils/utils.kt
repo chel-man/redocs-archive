@@ -10,8 +10,8 @@ import androidx.preference.PreferenceManager
 import java.text.SimpleDateFormat
 import java.util.*
 
-fun showError(context: Context, ex: Exception) {
-    showError(context,ex.localizedMessage)
+fun showError(context: Context, ex: Throwable) {
+    showError(context,ex.localizedMessage ?: "$ex")
 }
 
 fun showError(context: Context, msg: String) {
@@ -19,6 +19,16 @@ fun showError(context: Context, msg: String) {
         Toast.makeText(context, msg, Toast.LENGTH_LONG)
             .show()
     }catch (ex: Exception){}
+}
+
+fun causeException(ex: Throwable): Throwable {
+    var c = ex
+    while(true){
+        val cc = c.cause ?: break
+        c=cc
+    }
+
+    return c
 }
 
 private var metrics: DisplayMetrics? = null

@@ -2,13 +2,16 @@ package com.redocs.archive.framework.net
 
 import android.util.Log
 import com.redocs.archive.framework.PromiseImpl
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import promise.api.Promise
 import remote.service.api.ServiceCallInfo
 import remote.service.api.SimpleDataEnvelop
-import java.io.*
+import java.io.IOException
+import java.io.InvalidClassException
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -18,7 +21,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.reflect.KClass
+import kotlin.coroutines.Continuation
 
 object RemoteServiceProxyFactory {
 
@@ -38,14 +41,14 @@ object RemoteServiceProxyFactory {
     suspend inline fun <reified T> create(url: String) =
         create(T::class.java, url, timeout)
 
-    suspend fun <T> create(clazz: Class<T>, url: String, tmout: Int): T = coroutineScope {
+    suspend fun <T> create(clazz: Class<T>, url: String, tmout: Int): T = withContext(Dispatchers.IO) {
 
         val scope = this
 
         Proxy.newProxyInstance(clazz.classLoader, arrayOf(clazz), object : InvocationHandler {
 
             @Throws(Throwable::class)
-            override fun invoke(proxy: Any, method: Method, args: Array<*>): Any {
+            override fun invoke(proxy: Any, method: Method, _args: Array<*>): Any {
 
                 try {
                     //HttpURLConnection conn;
@@ -53,8 +56,9 @@ object RemoteServiceProxyFactory {
                     if (methodName == "toString")
                         throw NoSuchMethodException("Вызов метода toString !!!")
 
-                    val paramTypes = method.parameterTypes
-
+                    val paramTypes = fixParamTypes(method.parameterTypes)
+                    val args = fixArgs(_args,paramTypes.size)
+                    writelog("Remote: invoke [$methodName] ${paramTypes.joinToString(",")}")
                     var res: Any? = null
                     val rt = method.returnType
                     /*if(rt.equals(DeferredPromise.class)){
@@ -144,27 +148,43 @@ object RemoteServiceProxyFactory {
                     throw unwrapException(e)
                 }
             }
+
         }) as T
     }
 
-    private fun unwrapException(e: Exception): Exception{
+    private fun fixArgs(args: Array<*>, size: Int): Array<*> {
+
+        if(args.size > size)
+            return args.sliceArray(0 until size)
+        return args
+    }
+
+    private fun fixParamTypes(params: Array<Class<*>>): Array<Class<*>> {
+
+        for((i, pt) in params.withIndex()){
+            Log.d("#FIX","$pt")
+            if("$pt" ==  "interface kotlin.coroutines.Continuation") {
+                return params.sliceArray(0 until i)
+            }
+        }
+
+        return params
+    }
+
+    /*private fun unwrapException(e: Exception): Exception{
         var c = e
         while(true){
-            val cc = c.cause as Exception
-            if(cc == null)
-                break
+            val cc = c.cause as? Exception? ?: break
             c=cc
         }
 
         return c
-    }
+    }*/
 
     private fun unwrapException(e: Throwable): Throwable{
         var c = e
         while(true){
-            val cc = c.cause
-            if(cc == null)
-                break
+            val cc = c.cause ?: break
             c=cc
         }
 
@@ -208,12 +228,13 @@ object RemoteServiceProxyFactory {
         var tries = retries
         var rurl=url
 
+        checkNetworkState()
         if(log){
             var sargs = ""
             for(p in args)
                 sargs+= (if(sargs.isEmpty()) "" else ",")+p
-            writelog("RProxy:callRemoteService ["+methodName+"] "+sargs);
-            rurl+=(if(url.endsWith("/")) "" else "/")+"log";
+            writelog("RProxy:callRemoteService $url ["+methodName+"] "+sargs);
+            //rurl+=(if(url.endsWith("/")) "" else "/")+"log";
         }
 
         while(true){
@@ -222,12 +243,12 @@ object RemoteServiceProxyFactory {
             try{
                 val serviceUrl = URL(rurl)
                 val conn = serviceUrl.openConnection().apply {
-                    setReadTimeout(timeout)
-                    setDoInput(true)
-                    setDoOutput(true)
-                    setUseCaches(false)
+                    readTimeout = timeout
+                    doInput = true
+                    doOutput = true
+                    useCaches = false
                 }
-                val out = ObjectOutputStream(conn.getOutputStream())
+                val out = ObjectOutputStream(conn.outputStream)
 
                 out.writeObject(
                     ServiceCallInfo(timeout).apply {
@@ -256,6 +277,10 @@ object RemoteServiceProxyFactory {
             writelog("call retrying $rurl/$methodName ($tries)")
             tries--
         }
+    }
+
+    private fun checkNetworkState() {
+
     }
 
     private val df = SimpleDateFormat("dd.MM HH:mm:ss")
@@ -443,7 +468,7 @@ object RemoteServiceProxyFactory {
 
     private fun writelog(s: String, type: LogType) {
         if(log && type==LogType.Message)
-            System.out.println(s);
+            Log.d("#RemoteDBG",s)
         if(logDataTransmitTime && type == LogType.DataTransfer )
             System.out.println(s);
     }
