@@ -21,7 +21,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.coroutines.Continuation
 
 object RemoteServiceProxyFactory {
 
@@ -40,6 +39,9 @@ object RemoteServiceProxyFactory {
 
     suspend inline fun <reified T> create(url: String) =
         create(T::class.java, url, timeout)
+
+    suspend fun <T> create(clazz: Class<T>, url: String) =
+        create(clazz, url, timeout)
 
     suspend fun <T> create(clazz: Class<T>, url: String, tmout: Int): T = withContext(Dispatchers.IO) {
 
@@ -228,7 +230,6 @@ object RemoteServiceProxyFactory {
         var tries = retries
         var rurl=url
 
-        checkNetworkState()
         if(log){
             var sargs = ""
             for(p in args)
@@ -277,10 +278,6 @@ object RemoteServiceProxyFactory {
             writelog("call retrying $rurl/$methodName ($tries)")
             tries--
         }
-    }
-
-    private fun checkNetworkState() {
-
     }
 
     private val df = SimpleDateFormat("dd.MM HH:mm:ss")

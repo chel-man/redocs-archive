@@ -1,5 +1,6 @@
 package com.redocs.archive.ui.events
 
+import android.net.ConnectivityManager
 import com.redocs.archive.domain.document.Document
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.ui.utils.ContextActionSource
@@ -12,3 +13,5 @@ class DocumentSelectedEvent(id: Long = Long.MIN_VALUE) : EventBus.Event<Long>(id
 class ShowDocumentEvent() : EventBus.Event<Unit>(Unit)
 class ContextActionRequestEvent(source: ContextActionSource) : EventBus.Event<ContextActionSource>(source)
 class ContextActionStoppedEvent(source: ContextActionSource) : EventBus.Event<ContextActionSource>(source)
+class NetworkStateRequest() : EventBus.Event<Unit>(Unit)
+class NetworkStateResponceEvent(connected: Boolean) : EventBus.Event<Boolean>(connected)

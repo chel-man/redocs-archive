@@ -1,21 +1,22 @@
 package com.redocs.archive.framework
 
-import com.redocs.archive.domain.security.SecurityService
-import com.redocs.archive.framework.net.RemoteServiceProxyFactory
+import com.redocs.archive.data.service.SecurityService
+import com.redocs.archive.framework.net.BaseRemoteServiceImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.lang.Exception
+import security.interfaces.SecurityService as RemoteSecurityService
 
 class SecurityServiceImpl(
-    private val url: String
-) : SecurityService {
+    private val url: String,
+    connected: Boolean
+) : SecurityService, BaseRemoteServiceImpl(connected) {
+
 
     override suspend fun authenticate(un: String, psw: String) =
         withContext(Dispatchers.IO) {
-            RemoteServiceProxyFactory.log = true
-            RemoteServiceProxyFactory
-                .create<SecurityService>(url)
-                .authenticate(un,psw)
+            prepareCall(RemoteSecurityService::class.java,url)
+                .login(un,psw)
+            Unit
         }
 
 }

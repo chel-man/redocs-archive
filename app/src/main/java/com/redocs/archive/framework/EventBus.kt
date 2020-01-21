@@ -37,6 +37,10 @@ class EventBus {
             eb.send(msg)
         }
 
+        suspend fun <T> call(msg: Event<*>): T? {
+            return eb.call(msg)
+        }
+
         fun unsubscribe(subscriber: EventBusSubscriber) {
             eb.unsubscribe(subscriber)
         }
@@ -71,9 +75,21 @@ class EventBus {
         }
     }
 
+    private suspend fun <T> call(evt: Event<*>): T? {
+        val l=subscribers[evt::class.java.canonicalName]
+        if(!l.isNullOrEmpty()) {
+            for( s in l) {
+                (s as? EventBusCallSubscriber)?.apply {
+                    return@call onCall(evt) as T?
+                }
+            }
+        }
+        return null
+    }
+
     private fun publish(evt: Event<*>) {
         //CoroutineScope(Dispatchers.Default).launch {
-            val l=subscribers["${evt::class.java.canonicalName}"]
+            val l=subscribers[evt::class.java.canonicalName]
             if(!l.isNullOrEmpty()) {
                 val h = Handler()
                 for( s in l) {
@@ -91,6 +107,10 @@ class EventBus {
 
 interface EventBusSubscriber {
     fun onEvent(evt: EventBus.Event<*>)
+}
+
+interface EventBusCallSubscriber : EventBusSubscriber {
+    suspend fun onCall(evt: EventBus.Event<*>): Any?
 }
 
 fun EventBusSubscriber.subscribe(vararg evts: Class<out EventBus.Event<*>>) {

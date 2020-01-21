@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkInfo
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
@@ -11,6 +13,7 @@ import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
+import androidx.core.net.ConnectivityManagerCompat
 import androidx.core.view.iterator
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.FragmentManager
@@ -22,18 +25,20 @@ import com.google.android.material.navigation.NavigationView
 import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
 import com.redocs.archive.framework.EventBus
+import com.redocs.archive.framework.EventBusCallSubscriber
 import com.redocs.archive.framework.EventBusSubscriber
 import com.redocs.archive.framework.subscribe
 import com.redocs.archive.localeManager
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.ContextActionStoppedEvent
+import com.redocs.archive.ui.events.NetworkStateRequest
 import com.redocs.archive.ui.utils.ActivityResultSync
 import com.redocs.archive.ui.utils.ContextActionSource
 import com.redocs.archive.ui.utils.showError
 import kotlinx.android.synthetic.main.main_activity.*
 import java.util.*
 
-class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync {
+class MainActivity : AppCompatActivity(), EventBusCallSubscriber, ActivityResultSync {
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navController: NavController
@@ -49,6 +54,17 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
         }
     }
 
+    override suspend fun onCall(evt: EventBus.Event<*>): Any? {
+        when(evt){
+            is NetworkStateRequest -> {
+                return (getSystemService(
+                    Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
+                        ?.activeNetworkInfo
+                        ?.isConnected == true
+            }
+        }
+        return null
+    }
     override fun onStart() {
         super.onStart()
         if(ArchiveApplication.filesDir == null)
