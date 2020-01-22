@@ -12,4 +12,9 @@
     <string name="documents_tab_document">Документ</string>
     <string name="links_tab_title">Связи</string>
     <string name="settings_select_language_title">Язык</string>
+    <string name="settings_network_title">Сеть</string>
+    <string-array name="settings_network_item_titles">
+        <item>WI-FI</item>
+        <item>Любая</item>
+    </string-array>
 </resources>

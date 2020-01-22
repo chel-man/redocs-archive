@@ -8,6 +8,11 @@
         app:fragment="com.redocs.archive.ui.SettingsFragment$SelectLanguageFragment" />
 
     <Preference
+            app:key="network"
+            app:title="@string/settings_network_title"
+            app:fragment="com.redocs.archive.ui.SettingsFragment$NetworkFragment" />
+
+    <Preference
             app:key="Screen2"
             app:title="Prefs on Screen 2"
             app:fragment="com.redocs.archive.ui.SettingsFragment$Screen2Fragment"/>

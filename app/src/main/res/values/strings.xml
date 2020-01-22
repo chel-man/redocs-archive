@@ -42,16 +42,26 @@
 
     <!--  Settings  -->
     <string name="settings_select_language_title">Language</string>
-    <string-array name="settings_languages_list">
+    <string-array name="settings_network_item_keys">
+        <item>wi_fi</item>
+        <item>any</item>
+    </string-array>
+
+    <string-array name="settings_network_item_titles">
+        <item>WI-FI</item>
+        <item>Any</item>
+    </string-array>
+    <!--<string-array name="settings_languages_list">
         <item>English</item>
         <item>Русский</item>
     </string-array>
     <string-array name="settings_languages_list_values">
         <item>en</item>
         <item>ru</item>
-    </string-array>
+    </string-array>-->
     <string name="title_activity_settings">Settings</string>
     <string name="settings_service_url_title" translatable="false">Service url</string>
+    <string name="settings_network_title">Network</string>
 
     <!-- Preference Titles -->
     <string name="messages_header">Messages</string>

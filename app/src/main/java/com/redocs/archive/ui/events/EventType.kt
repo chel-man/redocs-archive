@@ -13,5 +13,4 @@ class DocumentSelectedEvent(id: Long = Long.MIN_VALUE) : EventBus.Event<Long>(id
 class ShowDocumentEvent() : EventBus.Event<Unit>(Unit)
 class ContextActionRequestEvent(source: ContextActionSource) : EventBus.Event<ContextActionSource>(source)
 class ContextActionStoppedEvent(source: ContextActionSource) : EventBus.Event<ContextActionSource>(source)
-class NetworkStateRequest() : EventBus.Event<Unit>(Unit)
-class NetworkStateResponceEvent(connected: Boolean) : EventBus.Event<Boolean>(connected)
+class NetworkStateChangedEvent(connected: Boolean) : EventBus.Event<Boolean>(connected)

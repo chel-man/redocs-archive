@@ -2,18 +2,19 @@ package com.redocs.archive.ui
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.ConnectivityManager
-import android.net.NetworkInfo
 import android.os.Bundle
 import android.os.Handler
+import android.provider.Settings
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
-import androidx.core.net.ConnectivityManagerCompat
 import androidx.core.view.iterator
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.FragmentManager
@@ -25,24 +26,23 @@ import com.google.android.material.navigation.NavigationView
 import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
 import com.redocs.archive.framework.EventBus
-import com.redocs.archive.framework.EventBusCallSubscriber
 import com.redocs.archive.framework.EventBusSubscriber
 import com.redocs.archive.framework.subscribe
 import com.redocs.archive.localeManager
 import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.ContextActionStoppedEvent
-import com.redocs.archive.ui.events.NetworkStateRequest
+import com.redocs.archive.ui.events.NetworkStateChangedEvent
 import com.redocs.archive.ui.utils.ActivityResultSync
 import com.redocs.archive.ui.utils.ContextActionSource
 import com.redocs.archive.ui.utils.showError
 import kotlinx.android.synthetic.main.main_activity.*
-import java.util.*
 
-class MainActivity : AppCompatActivity(), EventBusCallSubscriber, ActivityResultSync {
+class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync {
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navController: NavController
     private lateinit var appBarConfiguration : AppBarConfiguration
+    private lateinit var receiver: NetworkStateReceiver
 
     init {
         subscribe(ContextActionRequestEvent::class.java)
@@ -54,21 +54,11 @@ class MainActivity : AppCompatActivity(), EventBusCallSubscriber, ActivityResult
         }
     }
 
-    override suspend fun onCall(evt: EventBus.Event<*>): Any? {
-        when(evt){
-            is NetworkStateRequest -> {
-                return (getSystemService(
-                    Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
-                        ?.activeNetworkInfo
-                        ?.isConnected == true
-            }
-        }
-        return null
-    }
     override fun onStart() {
         super.onStart()
         if(ArchiveApplication.filesDir == null)
             ArchiveApplication.filesDir = filesDir.canonicalPath
+
     }
 
     override fun attachBaseContext(newBase: Context?) {
@@ -105,15 +95,33 @@ class MainActivity : AppCompatActivity(), EventBusCallSubscriber, ActivityResult
                 }
             }
         }
-        else
-            ArchiveApplication.baseUrl = PreferenceManager.getDefaultSharedPreferences(this)
-                .getString(SettingsFragment.SERVICE_URL_KEY, null)
+        else {
+            PreferenceManager.getDefaultSharedPreferences(this).apply {
+                ArchiveApplication.baseUrl =
+                        getString(SettingsFragment.SERVICE_URL_KEY, null)
+                NetworkStateReceiver.networkPrefs =
+                    getString(Settings.Global.NETWORK_PREFERENCE,null)
+            }
 
-        if(savedInstanceState == null) {
-            ArchiveApplication.setup()
+            ArchiveApplication.isNetworkConnected =
+                NetworkStateReceiver.isConnected(this)
+
+            if(savedInstanceState == null) {
+                ArchiveApplication.setup()
+            }
+
+            // Registers BroadcastReceiver to track network connection changes.
+            receiver = NetworkStateReceiver().apply {
+                registerReceiver(this,
+                    IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
+            }
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(receiver)
+    }
     /*private fun setupBottomNavMenu(navController: NavController) {
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav_view)
         bottomNav?.setupWithNavController(navController)
@@ -125,7 +133,6 @@ class MainActivity : AppCompatActivity(), EventBusCallSubscriber, ActivityResult
         /*In split screen mode, you can drag this view out from the left
             This does NOT modify the actionbar*/
         sideNavView.menu.findItem(R.id.settings_menu).setOnMenuItemClickListener {
-            drawerLayout.closeDrawers()
             startSettingsActivity()
             true
         }
@@ -179,6 +186,7 @@ class MainActivity : AppCompatActivity(), EventBusCallSubscriber, ActivityResult
     }
 
     private fun startSettingsActivity(){
+        drawerLayout.closeDrawers()
         preferencesActivityRequest = Math.random().toInt() and 0xFF
         startActivityForResult(
             Intent(this,SettingsActivity::class.java),
@@ -272,6 +280,36 @@ class MainActivity : AppCompatActivity(), EventBusCallSubscriber, ActivityResult
             recreate()
     }
 
+    class NetworkStateReceiver : BroadcastReceiver() {
+
+        override fun onReceive(context: Context, intent: Intent) {
+            val connected = isConnected(context)
+            ArchiveApplication.isNetworkConnected = connected
+            EventBus.publish(NetworkStateChangedEvent(connected))
+        }
+
+        companion object {
+
+            const val WIFI = "wi_fi"
+            const val ANY = "any"
+            var networkPrefs: String? = null
+
+            fun isConnected(context: Context): Boolean {
+                val conn = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                val ni = conn.activeNetworkInfo
+                var connected = false
+                ni?.apply {
+                    // Checks the user prefs and the network connection. Based on the result, decides whether
+                    // to refresh the display or keep the current display.
+                    // If the userpref is Wi-Fi only, checks to see if the device has a Wi-Fi connection.
+                    connected =
+                        (WIFI == networkPrefs && type == ConnectivityManager.TYPE_WIFI) ||
+                                (ANY == networkPrefs && isConnected)
+                }
+                return connected
+            }
+        }
+    }
 }
 
 private fun traverseChildFragments(fm: FragmentManager): Pair<Int,Boolean>{
