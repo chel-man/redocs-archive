@@ -2,9 +2,7 @@ package com.redocs.archive.framework.net
 
 import android.util.Log
 import com.redocs.archive.framework.PromiseImpl
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import promise.api.Promise
 import remote.service.api.ServiceCallInfo
 import remote.service.api.SimpleDataEnvelop
@@ -82,9 +80,9 @@ object RemoteServiceProxyFactory {
                         res=promise;
                     }
                     else*/
-                    if (rt is Promise<*, *>) {
+                    if (rt is Promise<*,*>) {
 
-                        val promise = object : PromiseImpl<Any, Any>() {
+                        val promise = object : PromiseImpl<Any,Any>() {
 
                             private var submitted = false
 
@@ -94,7 +92,7 @@ object RemoteServiceProxyFactory {
                                     scope.async {
                                         writelog("RProxy: submitCallRemoteServiceTask");
                                         submitCallRemoteServiceTask(
-                                            promise, url, methodName, args, paramTypes,
+                                            this,promise, url, methodName, args, paramTypes,
                                             tmout, retries
                                         )
                                     }
@@ -287,6 +285,7 @@ object RemoteServiceProxyFactory {
     }
 
     private fun submitCallRemoteServiceTask(
+        scope: CoroutineScope,
         promise: Promise<Any, Any>,
         url: String,
         methodName: String,
@@ -302,7 +301,7 @@ object RemoteServiceProxyFactory {
             }
             var lres: Any?
             var tries = retries
-            while (true) {
+            while (scope.isActive) {
                 lateinit var ins: ObjectInputStream
                 lateinit var out: ObjectOutputStream
                 try {

@@ -14,7 +14,7 @@ class SecurityServiceImpl(
 
     override suspend fun authenticate(un: String, psw: String) =
         withContext(Dispatchers.IO) {
-            prepareCall(RemoteSecurityService::class.java,url)
+            prepareCall<RemoteSecurityService>(url)
                 .login(un,psw)
             Unit
         }

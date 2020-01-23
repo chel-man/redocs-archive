@@ -18,12 +18,16 @@ abstract class BaseRemoteServiceImpl(
         }
     }
 
+    protected suspend inline fun <reified T> prepareCall(url: String): T =
+        prepareCall(T::class.java,url)
+
     protected suspend fun<T> prepareCall(
         clazz: Class<T>,
         url: String
-    ): T {
+    ): T
+    {
 
-        if(!connected) throw throw Exception("NETWORK NOT CONNECTED")
+        if(!connected) throw Exception("NETWORK NOT CONNECTED")
         RemoteServiceProxyFactory.log = true
         return RemoteServiceProxyFactory
             .create(clazz, url )
