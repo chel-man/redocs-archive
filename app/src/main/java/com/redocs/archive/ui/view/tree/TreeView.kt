@@ -278,7 +278,7 @@ abstract class TreeView<T : TreeViewNode>(
             var node = LoadingNode as T
             node.loading = true
             controller.add(node)
-            controller.expand(node,0)
+            controller.expand(node, 0)
         }
 
         fun refresh() {

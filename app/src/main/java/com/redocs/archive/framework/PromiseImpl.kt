@@ -1,5 +1,8 @@
 package com.redocs.archive.framework
 
+import android.util.Log
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import promise.api.SimplePromise
 import java.lang.Exception
 import kotlin.coroutines.Continuation
@@ -11,9 +14,20 @@ open class PromiseImpl <T,R> : SimplePromise<T, R>() {
 
     private var continuation: Continuation<R>? = null
 
+    protected open suspend fun resolveAsync(){}
+
     suspend fun wait(): R {
-        return suspendCoroutine {
-            continuation = it
+        if(isDone || isCancelled)
+            return get()
+
+        return coroutineScope {
+            async{
+                resolveAsync()
+            }
+            val r: R = suspendCoroutine {
+                continuation = it
+            }
+            r
         }
     }
 

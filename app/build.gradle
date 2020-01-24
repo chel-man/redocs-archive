@@ -26,31 +26,33 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'androidx.appcompat:appcompat:1.0.2'
-    implementation 'androidx.core:core-ktx:1.0.2'
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.core:core-ktx:1.1.0'
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
     implementation 'androidx.preference:preference:1.1.0'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-    implementation 'androidx.navigation:navigation-fragment-ktx:2.0.0'
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.1.0'
     implementation 'androidx.navigation:navigation-ui-ktx:2.0.0'
-    implementation 'androidx.navigation:navigation-common-ktx:2.0.0'
-    implementation 'androidx.recyclerview:recyclerview:1.0.0'
+    implementation 'androidx.navigation:navigation-common-ktx:2.1.0'
+    implementation 'androidx.recyclerview:recyclerview:1.1.0'
     implementation 'androidx.recyclerview:recyclerview-selection:1.0.0'
     implementation 'androidx.fragment:fragment-ktx:1.1.0-rc03'
-    implementation 'androidx.lifecycle:lifecycle-extensions:2.0.0'
+    implementation 'androidx.lifecycle:lifecycle-extensions:2.1.0'
     implementation project(path: ':domain')
     implementation project(path: ':data')
     implementation project(path: ':usecases')
-    implementation 'androidx.paging:paging-runtime-ktx:2.1.0'
+    implementation 'androidx.paging:paging-runtime-ktx:2.1.1'
     implementation 'androidx.preference:preference-ktx:1.1.0'
     implementation 'com.google.code.gson:gson:2.8.6'
     implementation files('/home/joy/projects/NetBeansProjects/utils-functional/dist/utils-functional.jar')
     implementation files('/home/joy/projects/NetBeansProjects/remote-service-api/dist/remote-service-api.jar')
     implementation files('/home/joy/projects/NetBeansProjects/redocs/archive/1.1/e-archive-commons-api/dist/e-arch-commons-api.jar')
     implementation files('/home/joy/projects/NetBeansProjects/security-api/dist/security-api.jar')
+    implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
+    implementation files('/home/joy/projects/NetBeansProjects/redocs/archive/1.1/e-arch-commons/dist/e-arch-commons.jar')
     //implementation 'com.squareup.okhttp:okhttp:2.7.5'
     //implementation 'io.ktor:ktor-client-android:1.3.0'
     /*implementation 'androidx.navigation:navigation-fragment-ktx:2.0.0'

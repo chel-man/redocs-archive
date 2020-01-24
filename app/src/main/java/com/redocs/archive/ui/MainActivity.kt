@@ -292,19 +292,22 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
 
             const val WIFI = "wi_fi"
             const val ANY = "any"
-            var networkPrefs: String? = null
+            var networkPrefs: String? = ANY
+                set(value){
+                    field = value ?: ANY
+                }
 
             fun isConnected(context: Context): Boolean {
                 val conn = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
                 val ni = conn.activeNetworkInfo
-                var connected = false
+                var connected = ni.isConnected
                 ni?.apply {
                     // Checks the user prefs and the network connection. Based on the result, decides whether
                     // to refresh the display or keep the current display.
                     // If the userpref is Wi-Fi only, checks to see if the device has a Wi-Fi connection.
-                    connected =
+                    connected = isConnected && (
                         (WIFI == networkPrefs && type == ConnectivityManager.TYPE_WIFI) ||
-                                (ANY == networkPrefs && isConnected)
+                                ANY == networkPrefs )
                 }
                 return connected
             }

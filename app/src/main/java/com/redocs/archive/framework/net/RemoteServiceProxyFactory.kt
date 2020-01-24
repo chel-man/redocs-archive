@@ -3,6 +3,7 @@ package com.redocs.archive.framework.net
 import android.util.Log
 import com.redocs.archive.framework.PromiseImpl
 import kotlinx.coroutines.*
+import kotlinx.coroutines.NonCancellable.isActive
 import promise.api.Promise
 import remote.service.api.ServiceCallInfo
 import remote.service.api.SimpleDataEnvelop
@@ -19,6 +20,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.reflect.jvm.javaMethod
+import kotlin.reflect.jvm.kotlinFunction
 
 object RemoteServiceProxyFactory {
 
@@ -57,10 +62,13 @@ object RemoteServiceProxyFactory {
                         throw NoSuchMethodException("Вызов метода toString !!!")
 
                     val paramTypes = fixParamTypes(method.parameterTypes)
-                    val args = fixArgs(_args,paramTypes.size)
-                    writelog("Remote: invoke [$methodName] ${paramTypes.joinToString(",")}")
+                    val (continuation,args) = fixArgs(_args,paramTypes.size)
+                    continuation?.run {
+                        writelog("==> Suspend method call detected")
+                    }
+                    val rt = method.kotlinFunction?.javaMethod?.returnType
+                    writelog("Remote: invoke [$methodName] ${paramTypes.joinToString(",")} : $rt")
                     var res: Any? = null
-                    val rt = method.returnType
                     /*if(rt.equals(DeferredPromise.class)){
                         final DeferredPromise promise=(DeferredPromise) new DeferredBlockingPromiseImpl(){
 
@@ -80,39 +88,39 @@ object RemoteServiceProxyFactory {
                         res=promise;
                     }
                     else*/
-                    if (rt is Promise<*,*>) {
-
+                    if (rt!!.name == Promise::class.java.name) {
+                        writelog("PROMISE return type detected")
                         val promise = object : PromiseImpl<Any,Any>() {
 
                             private var submitted = false
 
-                            private fun submit() {
+                            private suspend fun submit() {
+                                val promise = this
                                 if (!submitted) {
-                                    val promise = this
-                                    scope.async {
-                                        writelog("RProxy: submitCallRemoteServiceTask");
-                                        submitCallRemoteServiceTask(
-                                            this,promise, url, methodName, args, paramTypes,
-                                            tmout, retries
-                                        )
-                                    }
+                                    /*coroutineScope {
+                                        async {*/
+                                            writelog("RProxy: submitCallRemoteServiceTask $this");
+                                            submitCallRemoteServiceTask(
+                                                promise, url, methodName, args, paramTypes,
+                                                tmout, retries
+                                            )
+                                            //(continuation as Continuation<Promise<*,*>>)?.resume(promise)
+                                        /*}
+                                    }*/
                                     submitted = true;
                                 }
                             }
 
-                            override fun resolve(): Promise<Any, Any> {
-                                submit()
-                                return this;
-                            }
+                            override suspend fun resolveAsync(): Unit = submit()
 
-                            override fun get(): Any {
+                            /*override fun get(): Any {
                                 submit()
                                 try {
                                     return super.get()
                                 } catch (e: Exception) {
                                     throw unpackException(e)
                                 }
-                            }
+                            }*/
 
                         };
                         res = promise
@@ -152,18 +160,18 @@ object RemoteServiceProxyFactory {
         }) as T
     }
 
-    private fun fixArgs(args: Array<*>, size: Int): Array<*> {
+    private fun fixArgs(args: Array<*>, size: Int): Pair<Continuation<*>?,Array<*>> {
 
         if(args.size > size)
-            return args.sliceArray(0 until size)
-        return args
+            return args.last() as Continuation<*> to  args.sliceArray(0 until size)
+        return null to args
     }
 
     private fun fixParamTypes(params: Array<Class<*>>): Array<Class<*>> {
 
         for((i, pt) in params.withIndex()){
-            Log.d("#FIX","$pt")
-            if("$pt" ==  "interface kotlin.coroutines.Continuation") {
+            if(pt.name == Continuation::class.java.name) {
+                writelog("==> Continuation param detected")
                 return params.sliceArray(0 until i)
             }
         }
@@ -284,15 +292,14 @@ object RemoteServiceProxyFactory {
         return df.format(Date())
     }
 
-    private fun submitCallRemoteServiceTask(
-        scope: CoroutineScope,
+    private suspend fun submitCallRemoteServiceTask(
         promise: Promise<Any, Any>,
         url: String,
         methodName: String,
         args: Array<*>,
         paramTypes: Array<Class<*>>,
         timeout: Int, retries: Int
-    ): Unit {
+    ): Unit /*= coroutineScope*/ {
         try {
             writelog("RProxy:Executor starting task ...")
             if (promise.isDone || promise.isCancelled) {
@@ -301,9 +308,10 @@ object RemoteServiceProxyFactory {
             }
             var lres: Any?
             var tries = retries
-            while (scope.isActive) {
+            while (true) {
                 lateinit var ins: ObjectInputStream
                 lateinit var out: ObjectOutputStream
+                yield()
                 try {
                     try {
                         //long ltime=System.currentTimeMillis();
@@ -380,10 +388,10 @@ object RemoteServiceProxyFactory {
                         /*}catch(EOFException eof){
                             System.out.println("========= EOF ================");*/
                     } catch (ce: CancellationException) {
-                        return;
+                        return
                     } catch (ice: InvalidClassException) {
                         setPromiseException(promise, /*out, ins,*/ ice);
-                        return;
+                        return
                     } catch (e: IOException) {
 
                         if (tries > 0) {
@@ -393,16 +401,16 @@ object RemoteServiceProxyFactory {
                         }
                         e.printStackTrace();
                         setPromiseException(promise, /*out, ins,*/ e);
-                        return;
-                    } catch (ex: Exception) {
+                        return
+                    } catch (ex: Throwable) {
 
                         /*if(!isAppException(ex) && tries>0){
                             System.out.println("retrying "+url+"/"+methodName);
                             tries--;
                             continue;
                         }*/
-                        ex.printStackTrace();
-                        setPromiseException(promise, /*out, ins,*/ ex);
+                        writelog("EXCEPTION\n${ex.localizedMessage}")
+                        setPromiseException(promise, /*out, ins,*/ java.lang.Exception(ex))
                         return
                     }
                 } finally {
@@ -464,7 +472,7 @@ object RemoteServiceProxyFactory {
 
     private fun writelog(s: String, type: LogType) {
         if(log && type==LogType.Message)
-            Log.d("#RemoteDBG",s)
+            Log.d("#NETPROXY",s)
         if(logDataTransmitTime && type == LogType.DataTransfer )
             System.out.println(s);
     }

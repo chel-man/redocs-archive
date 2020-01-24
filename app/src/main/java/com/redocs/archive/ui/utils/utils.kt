@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.text.format.DateFormat
 import android.util.DisplayMetrics
+import android.util.Log
 import android.util.TypedValue
 import android.widget.Toast
 import androidx.preference.PreferenceManager
@@ -12,6 +13,7 @@ import java.util.*
 
 fun showError(context: Context, ex: Throwable) {
     showError(context,ex.localizedMessage ?: "$ex")
+    Log.e("#ERROR","",ex)
 }
 
 fun showError(context: Context, msg: String) {
