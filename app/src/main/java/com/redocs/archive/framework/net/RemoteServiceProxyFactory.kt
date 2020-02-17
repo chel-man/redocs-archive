@@ -7,6 +7,7 @@ import kotlinx.coroutines.NonCancellable.isActive
 import promise.api.Promise
 import remote.service.api.ServiceCallInfo
 import remote.service.api.SimpleDataEnvelop
+import remote.service.api.SimpleDataEnvelop.DataAnnotation.*
 import java.io.IOException
 import java.io.InvalidClassException
 import java.io.ObjectInputStream
@@ -40,17 +41,15 @@ object RemoteServiceProxyFactory {
         mt = v
     }*/
 
-    suspend inline fun <reified T> create(url: String) =
+    inline fun <reified T> create(url: String) =
         create(T::class.java, url, timeout)
 
-    suspend fun <T> create(clazz: Class<T>, url: String) =
+    fun <T> create(clazz: Class<T>, url: String) =
         create(clazz, url, timeout)
 
-    suspend fun <T> create(clazz: Class<T>, url: String, tmout: Int): T = withContext(Dispatchers.IO) {
+    fun <T> create(clazz: Class<T>, url: String, tmout: Int): T {
 
-        val scope = this
-
-        Proxy.newProxyInstance(clazz.classLoader, arrayOf(clazz), object : InvocationHandler {
+        return Proxy.newProxyInstance(clazz.classLoader, arrayOf(clazz), object : InvocationHandler {
 
             @Throws(Throwable::class)
             override fun invoke(proxy: Any, method: Method, _args: Array<*>): Any {
@@ -328,7 +327,7 @@ object RemoteServiceProxyFactory {
                             tries--
                             continue
                         }
-                        e.printStackTrace();
+                        //e.printStackTrace();
                         setPromiseException(promise, e)
                         return
                     } catch (ex: Throwable) {
@@ -337,7 +336,7 @@ object RemoteServiceProxyFactory {
                             tries--
                             continue
                         }
-                        ex.printStackTrace();
+                        //ex.printStackTrace();
                         setPromiseException(promise,/*out,ins,*/Exception(ex))
                         return
                     }
@@ -354,7 +353,7 @@ object RemoteServiceProxyFactory {
                                     }
                                 })*/
 
-                        while (true) {
+                        loop@ while (true) {
                             writelog("RProxy:reading object ...")
                             //cins.setCallListener()
                             val env = ins.readObject() as SimpleDataEnvelop
@@ -362,22 +361,31 @@ object RemoteServiceProxyFactory {
                             if (logDataTransmitTime)
                                 totalTime += System.currentTimeMillis() - timeRef.get()
 
-                            writelog("RProxy:reading object OK [${env.getAnnotation().name}]")
+                            writelog(s = "RProxy:reading object OK [${env.annotation.name}]")
                             val data = env.getData()
-                            if (env.getAnnotation() == SimpleDataEnvelop.DataAnnotation.Error) {
-                                promise.setException(data as Exception)
-                                return
-                            } else if (env.getAnnotation() == SimpleDataEnvelop.DataAnnotation.Result) {
-                                lres = data
-                                if (totalTime > 0)
-                                    writelog("RProxy: [$methodName] data transmit time $totalTime,${LogType.DataTransfer}")
-                                break
-                            } else if (env.getAnnotation() == SimpleDataEnvelop.DataAnnotation.Ping) {
-                                writelog("=====> PING RECIVED")
-                                continue
+                            when(env.annotation) {
+                                Error -> {
+                                    promise.setException(data as Exception)
+                                    return
+                                }
+                                Result -> {
+                                    lres = data
+                                    if (totalTime > 0)
+                                        writelog("RProxy: [$methodName] data transmit time $totalTime,${LogType.DataTransfer}")
+                                    break@loop
+                                }
+                                Ping -> {
+                                    writelog("=====> PING RECIVED")
+                                    continue@loop
+                                }
                             }
-
-                            promise.setPartial(data)
+                            try {
+                                promise.setPartial(data)
+                            }catch (ce: CancellationException){
+                                // Client Side Cancellation
+                                //out.writeObject(ce)
+                                return
+                            }
                         }
                         writelog("RProxy:setting result ...")
                         promise.set(lres)
@@ -388,6 +396,8 @@ object RemoteServiceProxyFactory {
                         /*}catch(EOFException eof){
                             System.out.println("========= EOF ================");*/
                     } catch (ce: CancellationException) {
+                        //SS Cancellation
+                        setPromiseException(promise, ce)
                         return
                     } catch (ice: InvalidClassException) {
                         setPromiseException(promise, /*out, ins,*/ ice);
@@ -399,7 +409,7 @@ object RemoteServiceProxyFactory {
                             tries--
                             continue
                         }
-                        e.printStackTrace();
+                        //e.printStackTrace();
                         setPromiseException(promise, /*out, ins,*/ e);
                         return
                     } catch (ex: Throwable) {

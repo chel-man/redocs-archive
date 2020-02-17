@@ -1,6 +1,5 @@
 package com.redocs.archive.framework
 
-import android.util.Log
 import com.redocs.archive.data.service.SecurityService
 import com.redocs.archive.framework.net.BaseRemoteServiceImpl
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +16,7 @@ class SecurityServiceImpl(
 
     override suspend fun authenticate(un: String, psw: String) =
         withContext(Dispatchers.IO) {
-            prepareCall<RemoteService>(url)
+            getService<RemoteService>(url)
                 .login(un,psw,tz)
             Unit
         }

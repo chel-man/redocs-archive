@@ -1,14 +1,11 @@
 package com.redocs.archive.framework
 
-import android.util.Log
 import com.redocs.archive.data.partitions.PartitionsStructureDataSource
 import com.redocs.archive.domain.partitions.PartitionStructureNode
 import com.redocs.archive.framework.net.BaseRemoteServiceImpl
-import com.redocs.archive.framework.net.RemoteServiceProxyFactory
 import commons.api.container.Container
 import commons.api.services.ClassificatorService
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 
 class PartitionStructureDataSourceImpl(
@@ -20,7 +17,7 @@ class PartitionStructureDataSourceImpl(
     override suspend fun getChildren(id: Long): List<PartitionStructureNode> =
         withContext(Dispatchers.IO) {
             val l = mutableListOf<PartitionStructureNode>()
-            (prepareCall<ClassificatorService>(url).apply {
+            (getService<ClassificatorService>(url).apply {
                 getContainerChildrenAsync(
                     get(id))
                 .onPartial {
@@ -33,7 +30,7 @@ class PartitionStructureDataSourceImpl(
 
     override suspend fun get(id: Long): PartitionStructureNode =
         withContext(Dispatchers.IO) {
-            prepareCall<ClassificatorService>(url)
+            getService<ClassificatorService>(url)
                 .get(id)
                 .toPartitionStructureNode()
         }

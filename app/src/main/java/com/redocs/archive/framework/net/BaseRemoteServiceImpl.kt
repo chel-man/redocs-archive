@@ -18,10 +18,10 @@ abstract class BaseRemoteServiceImpl(
         }
     }
 
-    protected suspend inline fun <reified T> prepareCall(url: String): T =
-        prepareCall(T::class.java,url)
+    protected inline fun <reified T> getService(url: String): T =
+        getService(T::class.java,url)
 
-    protected suspend fun<T> prepareCall(
+    protected fun<T> getService(
         clazz: Class<T>,
         url: String
     ): T
