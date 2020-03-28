@@ -5,14 +5,33 @@ import com.redocs.archive.data.links.DocumentLinksDataSource
 import com.redocs.archive.data.partitions.PartitionsStructureDataSource
 import com.redocs.archive.data.service.SecurityService
 import com.redocs.archive.framework.*
+import com.redocs.archive.framework.net.RemoteServiceProxyFactory
+import com.redocs.archive.ui.events.NetworkStateChangedEvent
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
 
-class ArchiveApplication : android.app.Application() {
+class ArchiveApplication : android.app.Application(), EventBusSubscriber {
+
+    override fun onCreate() {
+        super.onCreate()
+        EventBus.subscribe(this, NetworkStateChangedEvent::class.java)
+    }
+
+    override fun onTerminate() {
+        super.onTerminate()
+        RemoteServiceProxyFactory.destroy()
+        EventBus.unsubscribe(this)
+    }
+
+    override fun onEvent(evt: EventBus.Event<*>) {
+        when(evt){
+            is NetworkStateChangedEvent -> isNetworkConnected = evt.data
+        }
+    }
 
     companion object {
-        var isNetworkConnected: Boolean = false
+        private var isNetworkConnected: Boolean = false
         lateinit var baseUrl: String
         var filesDir: String? = null
         val documentsDataSource: InMemoryDocumentsDataSource by lazy { InMemoryDocumentsDataSource() }

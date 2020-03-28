@@ -19,10 +19,13 @@ import java.net.SocketTimeoutException
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.*
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 import kotlin.reflect.jvm.javaMethod
 import kotlin.reflect.jvm.kotlinFunction
 
@@ -205,33 +208,20 @@ object RemoteServiceProxyFactory {
         ois.close();
         bis.close();
         return obj;
-    }
-
-    private static ExecutorService executor;
-
-    private static ThreadFactory ff=new ThreadFactory(){
-            @Override
-              public Thread newThread(Runnable r) {
-                Thread t = new Thread(r);
-                t.setDaemon(true);
-                return t;
-              }};
-
-    private static synchronized ExecutorService getExecutor(){
-        if(executor==null){
-            if(mt)
-                executor=Executors.newCachedThreadPool(ff);
-            else
-                executor=Executors.newSingleThreadExecutor(ff);
-        }
-
-        return executor;
     }*/
+
+    private val executor =  lazy {
+        Executors.newCachedThreadPool { r ->
+            Thread(r).apply {
+                isDaemon = true
+            }
+        }
+    }
 
     private fun callRemoteService(url: String, methodName: String, args: Array<*>,
                                     paramTypes: Array<Class<*>>, timeout: Int, retries: Int
-    ): Pair<ObjectInputStream, ObjectOutputStream> {
-
+    ): Pair<ObjectInputStream, ObjectOutputStream>
+    {
         var tries = retries
         var rurl=url
 
@@ -245,7 +235,7 @@ object RemoteServiceProxyFactory {
 
         while(true){
 
-            var ints = getTimeStamp()
+            val ints = getTimeStamp()
             try{
                 val serviceUrl = URL(rurl)
                 val conn = serviceUrl.openConnection().apply {
@@ -305,22 +295,24 @@ object RemoteServiceProxyFactory {
                 writelog("RProxy:Executor promise done or cancelled ...")
                 return
             }
-            var lres: Any?
             var tries = retries
             while (true) {
-                lateinit var ins: ObjectInputStream
-                lateinit var out: ObjectOutputStream
-                yield()
-                try {
+                /*lateinit var ins: ObjectInputStream
+                lateinit var out: ObjectOutputStream*/
+                //yield()
+                //try {
                     try {
                         //long ltime=System.currentTimeMillis();
-                        callRemoteService(url, methodName, args, paramTypes, timeout, 0).apply {
-                            ins = first
-                            out = second
-                        }
+                        val (ins,out) =
+                            callRemoteService(url, methodName, args, paramTypes, timeout, 0)
                         //System.out.println(">"+methodName+":"+(System.currentTimeMillis()-ltime));
                         if (retries != tries)
                             writelog("retrying $url/$methodName $retries/$tries OK")
+                        ins.use{
+                            out.use {
+                                readData(ins,promise,url,methodName)
+                            }
+                        }
                     } catch (e: IOException) {
                         if (tries > 0) {
                             writelog("retrying $url/$methodName")
@@ -341,101 +333,110 @@ object RemoteServiceProxyFactory {
                         return
                     }
 
-                    val timeRef = AtomicLong(0)
-                    try {
-                        var totalTime = 0L
-                        /*val cins = ins as CustomObjectInputStream
-                        if(logDataTransmitTime)
-                            cins.addDataReadyListener(object:ActionListener() {
-
-                                    override fun actionPerformed(e: ActionEvent) {
-                                        timeRef.set(System.currentTimeMillis());
-                                    }
-                                })*/
-
-                        loop@ while (true) {
-                            writelog("RProxy:reading object ...")
-                            //cins.setCallListener()
-                            val env = ins.readObject() as SimpleDataEnvelop
-
-                            if (logDataTransmitTime)
-                                totalTime += System.currentTimeMillis() - timeRef.get()
-
-                            writelog(s = "RProxy:reading object OK [${env.annotation.name}]")
-                            val data = env.getData()
-                            when(env.annotation) {
-                                Error -> {
-                                    promise.setException(data as Exception)
-                                    return
-                                }
-                                Result -> {
-                                    lres = data
-                                    if (totalTime > 0)
-                                        writelog("RProxy: [$methodName] data transmit time $totalTime,${LogType.DataTransfer}")
-                                    break@loop
-                                }
-                                Ping -> {
-                                    writelog("=====> PING RECIVED")
-                                    continue@loop
-                                }
-                            }
-                            try {
-                                promise.setPartial(data)
-                            }catch (ce: CancellationException){
-                                // Client Side Cancellation
-                                //out.writeObject(ce)
-                                return
-                            }
-                        }
-                        writelog("RProxy:setting result ...")
-                        promise.set(lres)
-                        writelog("RProxy:setting result OK");
-                        if (retries != tries)
-                            writelog("retrying DATA $url/$methodName $retries/$tries OK")
-                        return
-                        /*}catch(EOFException eof){
-                            System.out.println("========= EOF ================");*/
-                    } catch (ce: CancellationException) {
-                        //SS Cancellation
-                        setPromiseException(promise, ce)
-                        return
-                    } catch (ice: InvalidClassException) {
-                        setPromiseException(promise, /*out, ins,*/ ice);
-                        return
-                    } catch (e: IOException) {
-
-                        if (tries > 0) {
-                            writelog("retrying DATA $url/$methodName")
-                            tries--
-                            continue
-                        }
-                        //e.printStackTrace();
-                        setPromiseException(promise, /*out, ins,*/ e);
-                        return
-                    } catch (ex: Throwable) {
-
-                        /*if(!isAppException(ex) && tries>0){
-                            System.out.println("retrying "+url+"/"+methodName);
-                            tries--;
-                            continue;
-                        }*/
-                        writelog("EXCEPTION\n${ex.localizedMessage}")
-                        setPromiseException(promise, /*out, ins,*/ java.lang.Exception(ex))
-                        return
-                    }
-                } finally {
+                /*} finally {
                     try {
                         out.close();
                     } catch (e: Throwable) {}
                     try {
                         ins.close();
                     } catch (e: Throwable) {}
-                }
+                }*/
             }
         } finally {
             writelog("RProxy:Executor task copleted");
         }
     }
+
+    private suspend fun readData(
+        ins: ObjectInputStream,
+        promise: Promise<Any,Any>,
+        url: String,
+        methodName: String
+    ) {
+        val timeRef = AtomicLong(0)
+        //try {
+            var totalTime = 0L
+            var tries = retries
+            var lres: Any?
+
+            loop@ while (true) {
+                writelog("RProxy:reading object ...")
+                //cins.setCallListener()
+                val env = readEnvelop(ins)//ins.readObject() as SimpleDataEnvelop
+
+                if (logDataTransmitTime)
+                    totalTime += System.currentTimeMillis() - timeRef.get()
+
+                writelog(s = "RProxy:reading object OK [${env.annotation.name}]")
+                val data = env.data
+                when(env.annotation) {
+                    Error -> {
+                        promise.setException(data as Exception)
+                        return
+                    }
+                    Result -> {
+                        lres = data
+                        if (totalTime > 0)
+                            writelog("RProxy: [$methodName] data transmit time $totalTime,${LogType.DataTransfer}")
+                        break@loop
+                    }
+                    Ping -> {
+                        writelog("=====> PING RECIVED")
+                        continue@loop
+                    }
+                }
+                try {
+                    promise.setPartial(data)
+                }catch (ce: CancellationException){
+                    // Client Side Cancellation
+                    //out.writeObject(ce)
+                    return
+                }
+            }
+            writelog("RProxy:setting result ...")
+            promise.set(lres)
+            writelog("RProxy:setting result OK");
+            if (retries != tries)
+                writelog("retrying DATA $url/$methodName $retries/$tries OK")
+            //return
+            /*}catch(EOFException eof){
+                System.out.println("========= EOF ================");*/
+        /*} catch (ce: CancellationException) {
+            //SS Cancellation
+            setPromiseException(promise, ce)
+            return
+        } catch (ice: InvalidClassException) {
+            setPromiseException(promise, /*out, ins,*/ ice);
+            return
+        } catch (e: IOException) {
+
+            if (tries > 0) {
+                writelog("retrying DATA $url/$methodName")
+                tries--
+                continue
+            }
+            //e.printStackTrace();
+            setPromiseException(promise, /*out, ins,*/ e);
+            return
+        } catch (ex: Throwable) {
+
+            writelog("EXCEPTION\n${ex.localizedMessage}")
+            setPromiseException(promise, /*out, ins,*/ java.lang.Exception(ex))
+            return
+        }*/
+
+    }
+
+    private suspend fun readEnvelop(ins: ObjectInputStream): SimpleDataEnvelop =
+        suspendCoroutine<SimpleDataEnvelop> {
+            executor.value.execute {
+                try {
+                    it.resume(ins.readObject() as SimpleDataEnvelop)
+                }catch (e:Exception){
+                    it.resumeWithException(e)
+                }
+            }
+        }
 
     private fun setPromiseException(
         promise: Promise<Any,Any>,
@@ -455,21 +456,20 @@ object RemoteServiceProxyFactory {
 
     fun destroy(): Unit
     {
-        /*if(executor!=null){
-            ExecutorService es = executor;
-            executor=null;
-            System.out.println("RemoteServiceProxy executor shutting down ...");
-            try {
-                es.shutdownNow();
-                es.awaitTermination(3, TimeUnit.SECONDS);
-                System.out.println("OK");
-            } catch (InterruptedException ex) {
-                System.out.println("Interrupted");
-            }catch(Exception e){
-                System.out.println("RemoteServiceProxy Error");
-                e.printStackTrace();
+        if(executor.isInitialized()){
+            executor.value.apply {
+                writelog("RemoteServiceProxy executor shutting down ...");
+                try {
+                    shutdownNow();
+                    awaitTermination(3, TimeUnit.SECONDS);
+                    writelog("OK");
+                } catch (ex: InterruptedException) {
+                    writelog("Interrupted");
+                } catch (e: Exception) {
+                    writelog("RemoteServiceProxy Error");
+                }
             }
-        }*/
+        }
     }
 
     private fun isAppException(e: Throwable): Boolean {

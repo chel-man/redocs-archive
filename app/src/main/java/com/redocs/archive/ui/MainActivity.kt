@@ -27,6 +27,8 @@ import com.redocs.archive.ArchiveApplication
 import com.redocs.archive.R
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.framework.EventBusSubscriber
+import com.redocs.archive.framework.net.BaseRemoteServiceImpl
+import com.redocs.archive.framework.net.RemoteServiceProxyFactory
 import com.redocs.archive.framework.subscribe
 import com.redocs.archive.localeManager
 import com.redocs.archive.ui.events.ContextActionRequestEvent
@@ -71,14 +73,12 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
         Log.d("#MA","CREATED")
         setContentView(R.layout.main_activity)
 
-        val toolbar = toolbar
-        setSupportActionBar(toolbar)
-
         val host: NavHostFragment = host_fragment as NavHostFragment? ?: return
 
         // Set up Action Bar
+        val toolbar = toolbar
+        setSupportActionBar(toolbar)
         navController = host.navController
-
         drawerLayout  = drawer_layout
         appBarConfiguration = AppBarConfiguration(
                 setOf(R.id.home_nav_dest,R.id.login_nav_dest),
@@ -103,14 +103,13 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
                     getString(Settings.Global.NETWORK_PREFERENCE,null)
             }
 
-            ArchiveApplication.isNetworkConnected =
-                NetworkStateReceiver.isConnected(this)
+            /*ArchiveApplication.isNetworkConnected =
+                NetworkStateReceiver.isConnected(this)*/
 
             if(savedInstanceState == null) {
                 ArchiveApplication.setup()
             }
 
-            // Registers BroadcastReceiver to track network connection changes.
             receiver = NetworkStateReceiver().apply {
                 registerReceiver(this,
                     IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
@@ -284,7 +283,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
 
         override fun onReceive(context: Context, intent: Intent) {
             val connected = isConnected(context)
-            ArchiveApplication.isNetworkConnected = connected
+            //ArchiveApplication.isNetworkConnected = connected
             EventBus.publish(NetworkStateChangedEvent(connected))
         }
 
@@ -300,7 +299,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
             fun isConnected(context: Context): Boolean {
                 val conn = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
                 val ni = conn.activeNetworkInfo
-                var connected = ni.isConnected
+                var connected = false
                 ni?.apply {
                     // Checks the user prefs and the network connection. Based on the result, decides whether
                     // to refresh the display or keep the current display.
