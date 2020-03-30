@@ -7,6 +7,7 @@ import android.provider.Settings
 import androidx.annotation.MainThread
 import androidx.preference.*
 import com.redocs.archive.R
+import com.redocs.archive.framework.net.NetworkStateMonitor
 import com.redocs.archive.ui.utils.LocaleManager.Companion.PREF_LANGUAGE_KEY
 import java.util.*
 
@@ -41,17 +42,19 @@ class SettingsFragment : PreferenceFragmentCompat(){
         val dsp = PreferenceManager.getDefaultSharedPreferences(context)
 
         findPreference<Preference>(PREF_LANGUAGE_KEY)?.apply {
-            val defLang = dsp
-                    .getString(PREF_LANGUAGE_KEY,Locale.getDefault().language)
-            summary = SelectLanguageFragment.preferencesList[defLang]
+            summary = null
+            dsp.getString(PREF_LANGUAGE_KEY,Locale.getDefault().language)?.run {
+                summary = SelectLanguageFragment.preferencesList[this]
+            }
         }
 
         findPreference<Preference>("network")?.apply {
-            val pval = dsp
-                .getString(
+            summary = null
+            dsp.getString(
                     Settings.Global.NETWORK_PREFERENCE,
-                    MainActivity.NetworkStateReceiver.ANY)
-            summary = NetworkFragment.preferencesList[pval]
+                    NetworkStateMonitor.ANY)?.run {
+                        summary = NetworkFragment.preferencesList[this]
+                    }
         }
 
         preferenceScreen.addPreference(

@@ -64,7 +64,7 @@ class FilesDataSourceStub(private val filesDir: String) : DataSource {
 
     override suspend fun delete(file: FileInfo) = withContext(Dispatchers.IO) {
         for(es in filesByDocument.entries){
-            for((i,pos) in es.value.withIndex()){
+            for((i, _) in es.value.withIndex()){
                 val fi = files[i]
                 if(fi.id == file.id){
                     val f = File(filesDir,"${fi.intName}")
@@ -80,7 +80,7 @@ class FilesDataSourceStub(private val filesDir: String) : DataSource {
     override suspend fun upload(
         documentId: Long,
         name: String,
-        ins: InputStream
+        inputStream: InputStream
     ) = withContext(Dispatchers.IO){
 
         val buff = ByteArray(1024)
@@ -89,7 +89,7 @@ class FilesDataSourceStub(private val filesDir: String) : DataSource {
         val iname = "file_$id"
         openFileOutputStream(iname).use {
             while(true){
-                val bytes = ins.read(buff)
+                val bytes = inputStream.read(buff)
                 if(bytes == -1)
                     break
                 it.write(buff,0, bytes)

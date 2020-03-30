@@ -28,6 +28,7 @@ import com.redocs.archive.R
 import com.redocs.archive.framework.EventBus
 import com.redocs.archive.framework.EventBusSubscriber
 import com.redocs.archive.framework.net.BaseRemoteServiceImpl
+import com.redocs.archive.framework.net.NetworkStateMonitor
 import com.redocs.archive.framework.net.RemoteServiceProxyFactory
 import com.redocs.archive.framework.subscribe
 import com.redocs.archive.localeManager
@@ -44,7 +45,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navController: NavController
     private lateinit var appBarConfiguration : AppBarConfiguration
-    private lateinit var receiver: NetworkStateReceiver
+    private lateinit var networkStateMonitor : NetworkStateMonitor
 
     init {
         subscribe(ContextActionRequestEvent::class.java)
@@ -99,7 +100,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
             PreferenceManager.getDefaultSharedPreferences(this).apply {
                 ArchiveApplication.baseUrl =
                         getString(SettingsFragment.SERVICE_URL_KEY, null)
-                NetworkStateReceiver.networkPrefs =
+                NetworkStateMonitor.networkPrefs =
                     getString(Settings.Global.NETWORK_PREFERENCE,null)
             }
 
@@ -110,16 +111,14 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
                 ArchiveApplication.setup()
             }
 
-            receiver = NetworkStateReceiver().apply {
-                registerReceiver(this,
-                    IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
-            }
+            networkStateMonitor = NetworkStateMonitor(this).apply {
+                registerNetworkListener()}
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(receiver)
+        networkStateMonitor.unregisterNetworkListener()
     }
     /*private fun setupBottomNavMenu(navController: NavController) {
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav_view)
@@ -279,7 +278,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
             recreate()
     }
 
-    class NetworkStateReceiver : BroadcastReceiver() {
+    /*class NetworkStateReceiver : BroadcastReceiver() {
 
         override fun onReceive(context: Context, intent: Intent) {
             val connected = isConnected(context)
@@ -311,7 +310,7 @@ class MainActivity : AppCompatActivity(), EventBusSubscriber, ActivityResultSync
                 return connected
             }
         }
-    }
+    }*/
 }
 
 private fun traverseChildFragments(fm: FragmentManager): Pair<Int,Boolean>{

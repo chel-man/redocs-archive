@@ -4,9 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Handler
-import android.util.Log
 import android.view.*
-import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -28,7 +26,7 @@ abstract class TreeView<T : TreeViewNode>(
 ) : RecyclerView(context){
 
     var selected: T? = null
-        get() = (adapter as Adapter<T>).selected as? T
+        get() = (adapter as Adapter<T>).selected
 
     var longClickListener: ((node: T) -> Boolean)? = null
 
@@ -269,7 +267,7 @@ abstract class TreeView<T : TreeViewNode>(
             prevSelected = null
             controller.selectedPosition = -1
             //Log.d("#ListAdapter","clear selection")
-            selectionListener?.invoke(null)
+            selectionListener.invoke(null)
         }
 
         private fun reload() {
@@ -501,9 +499,9 @@ abstract class TreeView<T : TreeViewNode>(
             for (n in nodes) {
                 if (n.id == id)
                     return n
-                var n = findInData(n.children, id, level + 1)
-                if (n != null)
-                    return n
+                val nn = findInData(n.children, id, level + 1)
+                if (nn != null)
+                    return nn
             }
             if (level == 0)
                 throw Exception("Раздел с ID=$id не найден")

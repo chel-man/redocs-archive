@@ -27,7 +27,7 @@ class SettingsActivity : AppCompatActivity(),
 
     private var restartParentActivity = false
     private val pcl =
-        SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if(!restartParentActivity)
                 restartParentActivity = SettingsFragment.restartablePreferenceKeys.contains(key)
         }

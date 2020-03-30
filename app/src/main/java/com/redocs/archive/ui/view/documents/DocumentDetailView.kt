@@ -338,7 +338,7 @@ class DocumentDetailView(
             }
         }
 
-        private inline fun DocumentModel.FileModel.toView(context: Context) =
+        private fun DocumentModel.FileModel.toView(context: Context) =
             FileView(context, id, name, size)
     }
 

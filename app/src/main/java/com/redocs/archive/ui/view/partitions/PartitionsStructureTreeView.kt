@@ -3,11 +3,8 @@ package com.redocs.archive.ui.view.partitions
 import android.content.Context
 import android.graphics.Color
 import android.view.*
-import android.widget.ImageView
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.view.ActionMode
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.ViewCompat
 import androidx.lifecycle.MutableLiveData
 import com.redocs.archive.R
@@ -21,7 +18,6 @@ import com.redocs.archive.ui.events.ContextActionRequestEvent
 import com.redocs.archive.ui.events.SelectPartitionNodeRequestEvent
 import com.redocs.archive.setItemEnabled
 import com.redocs.archive.ui.utils.Action
-import com.redocs.archive.ui.utils.convertDpToPixel
 import com.redocs.archive.ui.view.button.ImageButton48
 import com.redocs.archive.ui.view.tree.TreeView
 import com.redocs.archive.ui.view.tree.TreeViewNode
@@ -74,9 +70,9 @@ class PartitionsStructureTreeView(
         return v
     }
 
-    override fun nodeViewBinded(node: TreeViewNode, view: TreeNodeView) {
+    override fun nodeViewBinded(node: TreeViewNode, treeNodeView: TreeNodeView) {
 
-        val c = (view as ViewGroup).getChildAt(view.childCount-1)
+        val c = (treeNodeView as ViewGroup).getChildAt(treeNodeView.childCount-1)
         if(node.id == 0L)
             c.visibility = View.INVISIBLE
         else

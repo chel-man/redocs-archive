@@ -21,7 +21,7 @@ class NetworkStateMonitor(private val context: Context) {
             }
     }
 
-    private lateinit var delegate: NetworkSateReader
+    private val delegate: NetworkSateReader
 
     init {
         delegate =
@@ -49,33 +49,16 @@ class NetworkStateMonitor(private val context: Context) {
         fun unregisterListener()
     }
 
-    @RequiresApi(Build.VERSION_CODES.P)
+    @RequiresApi(Build.VERSION_CODES.N)
     private class StateReader28(val context: Context) : NetworkSateReader {
         override val isConnected: Boolean
             get() =
                 (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).let {
-                    it.getNetworkCapabilities(it.activeNetwork)
+                    isConnected28(it.getNetworkCapabilities(it.activeNetwork))
                 }
-                    .hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
 
         override fun registerListener() =
-            (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
-                .registerDefaultNetworkCallback(
-                    /*NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        /*.addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)*/
-                        .build(),*/
-                    object:ConnectivityManager.NetworkCallback(){
-                        override fun onAvailable(network: Network?) {
-                            network?.run {
-                                stateChanged(context,network)}
-                        }
-
-                        override fun onUnavailable() {
-                            stateChanged(false)
-                        }
-                    })
+            registerListener24(context)
 
         override fun unregisterListener() {}
 
@@ -84,30 +67,9 @@ class NetworkStateMonitor(private val context: Context) {
     @RequiresApi(Build.VERSION_CODES.N)
     private class StateReader24(val context: Context) : NetworkSateReader {
         override val isConnected: Boolean
-            get() =
-                (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).let {
-                    it.getNetworkCapabilities(it.activeNetwork)
-                }
-                .hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            get() = isConnected(context)
 
-        override fun registerListener() =
-            (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
-                .registerDefaultNetworkCallback(
-                    /*NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        /*.addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)*/
-                        .build(),*/
-                    object:ConnectivityManager.NetworkCallback(){
-                        override fun onAvailable(network: Network?) {
-                            network?.run {
-                                stateChanged(context,network)}
-                        }
-
-                        override fun onUnavailable() {
-                            stateChanged(false)
-                        }
-                    })
+        override fun registerListener() = registerListener24(context)
 
         override fun unregisterListener() {}
 
@@ -115,11 +77,7 @@ class NetworkStateMonitor(private val context: Context) {
 
     private class StateReader19(val context: Context) : NetworkSateReader {
         override val isConnected: Boolean
-            get() =
-                (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
-                    .activeNetworkInfo?.let {
-                        isConnected(it)
-                    } ?: false
+            get() = isConnected(context)
 
         private val bc = object: BroadcastReceiver(){
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -127,11 +85,12 @@ class NetworkStateMonitor(private val context: Context) {
             }
         }
 
-        override fun registerListener() =
+        override fun registerListener() {
             context.registerReceiver(
                 bc,
                 IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
-            ) as Unit
+            )
+        }
 
         override fun unregisterListener() = context.unregisterReceiver(bc)
 
@@ -150,10 +109,44 @@ private fun stateChanged(context: Context, network: Network) =
             (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
                 .getNetworkInfo(network))))
 
-private fun isConnected(ni: NetworkInfo) =
-    ni.let {
+private fun isConnected(context: Context) =
+    isConnected(
+        (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
+            .activeNetworkInfo)
+
+private fun isConnected(ni: NetworkInfo?) =
+    ni?.let {
         it.isConnected && (
                 (NetworkStateMonitor.WIFI == NetworkStateMonitor.networkPrefs &&
                         it.type == ConnectivityManager.TYPE_WIFI) ||
                         NetworkStateMonitor.ANY == NetworkStateMonitor.networkPrefs)
+    } ?: false
+
+@RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+private fun isConnected28(ncaps: NetworkCapabilities) =
+    ncaps.let {
+        it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            NetworkStateMonitor.WIFI == NetworkStateMonitor.networkPrefs &&
+                it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)  ||
+                NetworkStateMonitor.ANY == NetworkStateMonitor.networkPrefs
     }
+
+@RequiresApi(Build.VERSION_CODES.N)
+private fun registerListener24(context: Context) =
+    (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
+        .registerDefaultNetworkCallback(
+            /*NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                /*.addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)*/
+                .build(),*/
+            object:ConnectivityManager.NetworkCallback(){
+                override fun onAvailable(network: Network?) {
+                    network?.run {
+                        stateChanged(context,network)}
+                }
+
+                override fun onUnavailable() {
+                    stateChanged(false)
+                }
+            })

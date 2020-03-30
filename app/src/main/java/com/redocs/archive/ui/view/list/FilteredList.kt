@@ -24,7 +24,7 @@ open class FilteredList<T> (
     var text: String? = null
     var model = SimpleList.ListModel<T>(emptyList())
         set(value) {
-            loadDataToList(value as SimpleList.ListModel<T>)
+            loadDataToList(value)
             field = value
         }
 

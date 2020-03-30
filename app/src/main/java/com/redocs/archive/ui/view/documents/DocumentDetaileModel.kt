@@ -56,8 +56,7 @@ data class DocumentModel(
 
             if (other === this) return true
             if (javaClass != other?.javaClass) return false
-
-            other as FieldModel<T>
+            if(other !is FieldModel<*>) return false
 
             if (id != other.id) return false
             if (value != other.value) return false

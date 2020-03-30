@@ -227,19 +227,19 @@ class DocumentListView(
             showError(context, exception)
         }
 
-        override suspend fun loadData(start: Int, size: Int): List<ListRow> {
+        override suspend fun loadData(startPosition: Int, loadSize: Int): List<ListRow> {
 
             if (parentId != Long.MIN_VALUE)
-                return repo.list(parentId, start, size).map { DocumentListRow(it) }
+                return repo.list(parentId, startPosition, loadSize).map { DocumentListRow(it) }
 
-            var end = start + size
-            if (start > data.size - 1)
+            var end = startPosition + loadSize
+            if (startPosition > data.size - 1)
                 return listOf()
             if (end > data.size - 1)
                 end = data.size
             //Log.d("#ListRepo", "RESP: $start : $end")
             delay(500)
-            return data.subList(start, end)
+            return data.subList(startPosition, end)
         }
 
         override fun toString(): String {

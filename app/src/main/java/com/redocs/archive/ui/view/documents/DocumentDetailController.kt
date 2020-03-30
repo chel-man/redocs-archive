@@ -156,15 +156,13 @@ class Controller(
                     when (which) {
                         ModalDialog.DialogButton.POSITIVE -> {
                             val dm = documentLive.value as DocumentModel
-                            val v = ed.value
-                            if(v != null)
-                                saveFileInfo(
-                                    dm.files.indexOf(file),
-                                    FileInfo(
-                                        file.id,
-                                        v,
-                                        file.size)
-                                )
+                            saveFileInfo(
+                                dm.files.indexOf(file),
+                                FileInfo(
+                                    file.id,
+                                    ed.value,
+                                    file.size)
+                            )
                         }
                     }
                 }
@@ -259,7 +257,7 @@ class Controller(
     private suspend fun loadDictionaryEntries(id: Long) =
         dictionaryRepository.getEntries(id).map { it.toModel() }
 
-    private inline fun Document.toModel() =
+    private fun Document.toModel() =
         DocumentModel(
             id,
             name,
@@ -269,7 +267,7 @@ class Controller(
             fields.map { it.toModel() }
         )
 
-    private inline fun FileInfo.toModel() =
+    private fun FileInfo.toModel() =
         DocumentModel.FileModel(id, name, size)
 
     private fun Document.Field.toModel(): DocumentModel.FieldModel<*> {

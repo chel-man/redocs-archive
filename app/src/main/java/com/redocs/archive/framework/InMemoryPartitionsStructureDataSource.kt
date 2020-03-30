@@ -51,9 +51,9 @@ private fun getNodeById(nodes: List<Node>, id: Long, level: Int=0): Node? {
     for(n in nodes){
         if(n.node.id==id)
             return n
-        var n=getNodeById(n.children,id,level+1)
-        if(n !=null)
-            return n
+        val nn=getNodeById(n.children,id,level+1)
+        if(nn !=null)
+            return nn
     }
     if(level==0)
         throw Exception("Раздел с ID=$id не найден")

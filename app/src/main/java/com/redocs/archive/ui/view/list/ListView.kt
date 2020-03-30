@@ -103,7 +103,7 @@ open class ListView<T: ListRow>(
         Handler().post{
             screenRows = this@ListView.height /
                     com.redocs.archive.ui.utils.convertSpToPx(
-                        (adapter as ListAdapter<T>).textSize,
+                        adapter.textSize,
                         context)
             //Log.d("#LISTVIEW","init screen rows: $screenRows")
             if(vm.liveList?.value != null)

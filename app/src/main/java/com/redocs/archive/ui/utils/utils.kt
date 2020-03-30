@@ -102,9 +102,10 @@ class LocaleManager {
     }
 
     private fun setLocale(context: Context?): Context? =
-        updateResources(context,
-            PreferenceManager.getDefaultSharedPreferences(context)
-                .getString(PREF_LANGUAGE_KEY, Locale.getDefault().language))
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .getString(PREF_LANGUAGE_KEY, Locale.getDefault().language)?.let {
+                updateResources(context, it)
+            }
 
     private fun updateResources(context: Context?, language: String): Context? {
         val locale = Locale(language)

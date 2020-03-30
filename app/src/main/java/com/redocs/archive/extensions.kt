@@ -71,9 +71,9 @@ fun Any.asDoubleOrNull(): Double? =
 
 fun Any.asLongOrOriginal(): Any {
 
-    var v = this as? Long
+    val v = this as? Long
     if(v != null) return v
-    if((this as? Int) != null) return (this as Int).toLong()
+    if((this as? Int) != null) return this.toLong()
     return this
 
 }

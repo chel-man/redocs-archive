@@ -43,7 +43,7 @@ class LoginView(context: Context) : LinearLayoutCompat(context) {
             text = "Login"
             setOnClickListener {
                 isEnabled = false
-                (context as Activity).currentFocus.hideKeyboard()
+                (context as Activity).currentFocus?.hideKeyboard()
                 runBlocking {
                     try {
                         ArchiveApplication.securityService.authenticate(

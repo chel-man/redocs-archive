@@ -49,13 +49,14 @@ class EventBus {
     private fun subscribe(subscriber: EventBusSubscriber, vararg evts: Class<out Event<*>>) {
 
         for(evt in evts) {
-            val clazz = evt.canonicalName
-            val l = subscribers[clazz] ?: mutableListOf()
-            synchronized(l) {
-                if (!l.contains(subscriber))
-                    l.add(subscriber)
+            evt.canonicalName?.run {
+                val l = subscribers[this] ?: mutableListOf()
+                synchronized(l) {
+                    if (!l.contains(subscriber))
+                        l.add(subscriber)
+                }
+                subscribers[this] = l
             }
-            subscribers[clazz] = l
         }
     }
 
@@ -76,11 +77,13 @@ class EventBus {
     }
 
     private suspend fun <T> call(evt: Event<*>): T? {
-        val l=subscribers[evt::class.java.canonicalName]
-        if(!l.isNullOrEmpty()) {
-            for( s in l) {
-                (s as? EventBusCallSubscriber)?.apply {
-                    return@call onCall(evt) as T?
+        evt::class.java.canonicalName?.run {
+            val l = subscribers[this]
+            if (!l.isNullOrEmpty()) {
+                for (s in l) {
+                    (s as? EventBusCallSubscriber)?.apply {
+                        return@call onCall(evt) as T?
+                    }
                 }
             }
         }
@@ -89,16 +92,20 @@ class EventBus {
 
     private fun publish(evt: Event<*>) {
         //CoroutineScope(Dispatchers.Default).launch {
-            val l=subscribers[evt::class.java.canonicalName]
-            if(!l.isNullOrEmpty()) {
+        evt::class.java.canonicalName?.run {
+            val l = subscribers[this]
+            if (!l.isNullOrEmpty()) {
                 val h = Handler()
-                for( s in l) {
-                    h.post{
-                        s.onEvent(evt)}
+                for (s in l) {
+                    h.post {
+                        s.onEvent(evt)
+                    }
                 }
-                h.post{
-                    evt.succes?.invoke()}
+                h.post {
+                    evt.succes?.invoke()
+                }
             }
+        }
         //}
     }
 

@@ -384,6 +384,7 @@ object RemoteServiceProxyFactory {
                         writelog("=====> PING RECIVED")
                         continue@loop
                     }
+                    else -> Unit
                 }
                 try {
                     promise.setPartial(data)

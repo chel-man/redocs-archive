@@ -40,7 +40,7 @@ class InMemoryDocumentsDataSource : DataSource {
 
     override suspend fun get(id: Long): Document {
         delay(500)
-        return data[id.toInt()-1]?.copy(filesCount = ArchiveApplication.filesDataSource.list(id).size)
+        return data[id.toInt()-1].copy(filesCount = ArchiveApplication.filesDataSource.list(id).size)
     }
 
     override suspend fun get(ids: List<Long>): Collection<Document> = emptyList()
